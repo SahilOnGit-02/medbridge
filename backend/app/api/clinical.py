@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.hospital import Hospital
+from app.models.patient import Patient
 from app.models.clinical import (
     PatientHospitalMapping,
     Encounter,
@@ -13,6 +14,7 @@ from app.models.clinical import (
     Prescription,
     Observation,
 )
+from app.schemas.patient import PatientRead
 from app.schemas.clinical import (
     HospitalCreate,
     HospitalRead,
@@ -30,8 +32,9 @@ from app.schemas.clinical import (
     PrescriptionRead,
     ObservationCreate,
     ObservationRead,
+    UnifiedClinicalRecord,
+UnifiedPrescriptionRead,
 )
-
 
 router = APIRouter(
     prefix="/clinical",
@@ -47,8 +50,11 @@ def create_and_refresh(db, model, payload):
     return obj
 
 
-@router.post("/hospitals", response_model=HospitalRead, status_code=201)
-
+@router.post(
+    "/hospitals",
+    response_model=HospitalRead,
+    status_code=201,
+)
 def create_hospital(
     payload: HospitalCreate,
     db: Session = Depends(get_db),
@@ -56,10 +62,12 @@ def create_hospital(
     existing = db.scalar(
         select(Hospital).where(Hospital.code == payload.code)
     )
+
     if existing:
         return existing
 
     return create_and_refresh(db, Hospital, payload)
+
 
 @router.post(
     "/patient-mappings",
@@ -252,4 +260,39 @@ def create_observation(
         db,
         Observation,
         payload,
+    )
+
+
+@router.get(
+    "/patients/{patient_id}/record",
+    response_model=UnifiedClinicalRecord,
+)
+def get_unified_clinical_record(
+    patient_id: int,
+    db: Session = Depends(get_db),
+):
+    patient = db.get(Patient, patient_id)
+
+    if patient is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Patient not found",
+        )
+
+    prescriptions = [
+        UnifiedPrescriptionRead(
+            **PrescriptionRead.model_validate(prescription).model_dump(),
+            medication=MedicationRead.model_validate(prescription.medication),
+        )
+        for prescription in patient.prescriptions
+    ]
+
+    return UnifiedClinicalRecord(
+        patient=PatientRead.model_validate(patient),
+        hospital_mappings=patient.hospital_mappings,
+        encounters=patient.encounters,
+        conditions=patient.conditions,
+        allergies=patient.allergies,
+        prescriptions=prescriptions,
+        observations=patient.observations,
     )

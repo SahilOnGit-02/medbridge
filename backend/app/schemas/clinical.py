@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict
+from app.schemas.patient import PatientRead
 
 class HospitalCreate(BaseModel):
     code: str
@@ -79,9 +80,11 @@ class PrescriptionCreate(BaseModel):
     status: str = "active"
     instructions: str | None = None
 
+
 class PrescriptionRead(PrescriptionCreate):
     id: int
     model_config = ConfigDict(from_attributes=True)
+
 
 class ObservationCreate(BaseModel):
     patient_id: int
@@ -93,6 +96,21 @@ class ObservationCreate(BaseModel):
     observed_at: datetime
     status: str = "final"
 
+
 class ObservationRead(ObservationCreate):
     id: int
     model_config = ConfigDict(from_attributes=True)
+
+
+class UnifiedPrescriptionRead(PrescriptionRead):
+    medication: MedicationRead
+
+
+class UnifiedClinicalRecord(BaseModel):
+    patient: PatientRead
+    hospital_mappings: list[MappingRead]
+    encounters: list[EncounterRead]
+    conditions: list[ConditionRead]
+    allergies: list[AllergyRead]
+    prescriptions: list[UnifiedPrescriptionRead]
+    observations: list[ObservationRead]
