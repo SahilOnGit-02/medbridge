@@ -33,7 +33,8 @@ from app.schemas.clinical import (
     ObservationCreate,
     ObservationRead,
     UnifiedClinicalRecord,
-UnifiedPrescriptionRead,
+    UnifiedPrescriptionRead,
+    PatientIdentityResolution,
 )
 
 router = APIRouter(
@@ -295,4 +296,49 @@ def get_unified_clinical_record(
         allergies=patient.allergies,
         prescriptions=prescriptions,
         observations=patient.observations,
+    )
+
+
+@router.get(
+    "/resolve/{hospital_id}/{external_patient_id}",
+    response_model=PatientIdentityResolution,
+)
+def resolve_patient_identity(
+    hospital_id: int,
+    external_patient_id: str,
+    db: Session = Depends(get_db),
+):
+    mapping = db.scalar(
+        select(PatientHospitalMapping).where(
+            PatientHospitalMapping.hospital_id == hospital_id,
+            PatientHospitalMapping.external_patient_id == external_patient_id,
+        )
+    )
+
+    if mapping is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Patient identity mapping not found",
+        )
+
+    patient = db.get(Patient, mapping.patient_id)
+
+    if patient is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Mapped patient not found",
+        )
+
+    hospital = db.get(Hospital, mapping.hospital_id)
+
+    if hospital is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Mapped hospital not found",
+        )
+
+    return PatientIdentityResolution(
+        patient=PatientRead.model_validate(patient),
+        mapping=MappingRead.model_validate(mapping),
+        hospital=HospitalRead.model_validate(hospital),
     )

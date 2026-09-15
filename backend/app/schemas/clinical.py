@@ -114,3 +114,9 @@ class UnifiedClinicalRecord(BaseModel):
     allergies: list[AllergyRead]
     prescriptions: list[UnifiedPrescriptionRead]
     observations: list[ObservationRead]
+
+
+class PatientIdentityResolution(BaseModel):
+    patient: PatientRead
+    mapping: MappingRead
+    hospital: HospitalRead
