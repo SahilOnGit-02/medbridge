@@ -1,0 +1,780 @@
+{
+  "name": "Hospital A workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hospital-a/records",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "00b1227c-ee17-462c-9a68-245a52db51c9",
+      "name": "Hospital A Webhook",
+      "webhookId": "e6d847b8-bafb-48fc-a739-cb96e57bbb93"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cbbe9179-d8eb-49a5-abe6-9143455cfee7",
+              "name": "hospital_code",
+              "value": "={{ $json.body.hospital }}",
+              "type": "string"
+            },
+            {
+              "id": "b0755915-0fea-4907-b662-6d1f344f6b83",
+              "name": "external_patient_id",
+              "value": "={{ $json.body.patient_id }}",
+              "type": "string"
+            },
+            {
+              "id": "ce218d2c-3fc2-4ee9-aeed-8218c7dd8aab",
+              "name": "full_name",
+              "value": "={{ $json.body.patient_name }}",
+              "type": "string"
+            },
+            {
+              "id": "a52abb36-308d-49ac-bcad-133cfaf12ae9",
+              "name": "date_of_birth",
+              "value": "={{ $json.body.date_of_birth }}",
+              "type": "string"
+            },
+            {
+              "id": "de03129c-e9bb-47ed-94da-9d2edd74c0fc",
+              "name": "diagnosis_name",
+              "value": "={{ $json.body.diagnosis }}",
+              "type": "string"
+            },
+            {
+              "id": "db09c6a0-f36d-4917-a879-74e5b617ffde",
+              "name": "medbridge_id",
+              "value": "={{ 'MB-' + $json.body.patient_id }}",
+              "type": "string"
+            },
+            {
+              "id": "192e260f-2351-44b4-9ef1-e0e589a18b50",
+              "name": "blood_group",
+              "value": "={{ $json.body.blood_group }}",
+              "type": "string"
+            },
+            {
+              "id": "f14b42aa-2c80-4a0c-9e47-0b957ef8ed37",
+              "name": "started_at",
+              "value": "={{ $json.body.started_at }}",
+              "type": "string"
+            },
+            {
+              "id": "bbaa5997-1bb5-4bb0-93a6-5c11bf1b4007",
+              "name": "encounter_type",
+              "value": "={{ $json.body.encounter_type }}",
+              "type": "string"
+            },
+            {
+              "id": "e872ed46-1987-4e74-a828-5272c725275e",
+              "name": "ended_at",
+              "value": "={{ $json.body.ended_at }}",
+              "type": "string"
+            },
+            {
+              "id": "ff701203-d6b0-4f55-954c-efd7ccf33c1a",
+              "name": "=attending_doctor",
+              "value": "={{ $json.body.attending_doctor }}",
+              "type": "string"
+            },
+            {
+              "id": "1c507280-90bf-4734-8a69-f586f3f8d75c",
+              "name": "condition_code",
+              "value": "={{ $json.body.condition_code }}",
+              "type": "string"
+            },
+            {
+              "id": "92b9e909-7a02-4d7a-9fcf-529f190e25e5",
+              "name": "condition_status",
+              "value": "={{ $json.body.condition_status }}",
+              "type": "string"
+            },
+            {
+              "id": "96015189-95ef-4b74-af50-d9aa2cc4ef0e",
+              "name": "condition_diagnosed_on",
+              "value": "={{ $json.body.condition_diagnosed_on }}",
+              "type": "string"
+            },
+            {
+              "id": "2efb1d34-4a0f-4d7c-be14-ae50c9e1889a",
+              "name": "condition_notes",
+              "value": "={{ $json.body.condition_notes }}",
+              "type": "string"
+            },
+            {
+              "id": "47255099-64d3-451e-a72d-d6614995556d",
+              "name": "allergy_substance",
+              "value": "={{ $json.body.allergy_substance }}",
+              "type": "string"
+            },
+            {
+              "id": "92b3f6a6-015e-4117-ad50-7797733de9e6",
+              "name": "allergy_reaction",
+              "value": "={{ $json.body.allergy_reaction }}",
+              "type": "string"
+            },
+            {
+              "id": "97c7050e-3969-49dc-8dce-62127cfb84ce",
+              "name": "allergy_severity",
+              "value": "={{ $json.body.allergy_severity }}",
+              "type": "string"
+            },
+            {
+              "id": "826d11af-4cba-430b-a81a-47688d42e3e8",
+              "name": "allergy_verified",
+              "value": "={{ $json.body.allergy_verified }}",
+              "type": "string"
+            },
+            {
+              "id": "96e6ea1b-0df2-416c-8750-36019d45fe17",
+              "name": "allergy_recorded_on",
+              "value": "={{ $json.body.allergy_recorded_on }}",
+              "type": "string"
+            },
+            {
+              "id": "5c80f120-4720-435c-86f8-bf833518646e",
+              "name": "medication_name",
+              "value": "={{ $json.body.medication_name }}",
+              "type": "string"
+            },
+            {
+              "id": "910b2759-526f-4beb-b46e-5baeddae5d9e",
+              "name": "medication_generic_name",
+              "value": "={{ $json.body.medication_generic_name }}",
+              "type": "string"
+            },
+            {
+              "id": "01b4e2f4-c29b-436b-accf-c004b0be2e56",
+              "name": "medication_form",
+              "value": "={{ $json.body.medication_form }}",
+              "type": "string"
+            },
+            {
+              "id": "a2ebc2d3-3f13-4ddd-bb16-bade83a53e62",
+              "name": "medication_strength",
+              "value": "={{ $json.body.medication_strength }}",
+              "type": "string"
+            },
+            {
+              "id": "80753295-8d6f-459f-a486-646b09bd1389",
+              "name": "prescription_dose",
+              "value": "={{ $json.body.prescription_dose }}",
+              "type": "string"
+            },
+            {
+              "id": "0ef02390-effb-453d-a8c1-d3232cfc34e5",
+              "name": "prescription_frequency",
+              "value": "={{ $json.body.prescription_frequency }}",
+              "type": "string"
+            },
+            {
+              "id": "c656b0d2-192c-4779-b32c-f90c2995712d",
+              "name": "prescription_route",
+              "value": "={{ $json.body.prescription_route }}",
+              "type": "string"
+            },
+            {
+              "id": "7485a45b-d2ad-4d33-a065-b1ef63c30745",
+              "name": "prescription_started_on",
+              "value": "={{ $json.body.prescription_started_on }}",
+              "type": "string"
+            },
+            {
+              "id": "3e370a4e-571b-4cac-8c12-2dd9e6439fb5",
+              "name": "prescription_ended_on",
+              "value": "={{ $json.body.prescription_ended_on }}",
+              "type": "string"
+            },
+            {
+              "id": "33272da5-91f1-4275-a2ac-18b44ca9d128",
+              "name": "prescription_status",
+              "value": "={{ $json.body.prescription_status }}",
+              "type": "string"
+            },
+            {
+              "id": "6fd53e7e-4b75-45ea-9f2f-15142153baf5",
+              "name": "prescription_instructions",
+              "value": "={{ $json.body.prescription_instructions }}",
+              "type": "string"
+            },
+            {
+              "id": "7727f1a5-8514-4571-b24d-487cf7cdabe9",
+              "name": "observation_name",
+              "value": "={{ $json.body.observation_name }}",
+              "type": "string"
+            },
+            {
+              "id": "62ad923f-c684-4785-8137-53c229c550ad",
+              "name": "observation_unit",
+              "value": "={{ $json.body.observation_unit }}",
+              "type": "string"
+            },
+            {
+              "id": "2dd837c7-6dfc-4950-b7e3-d1200264b88e",
+              "name": "observation_reference_range",
+              "value": "={{ $json.body.observation_reference_range }}",
+              "type": "string"
+            },
+            {
+              "id": "5ee38e03-c61e-408a-998c-6a7f2a20df34",
+              "name": "observation_observed_at",
+              "value": "={{ $json.body.observation_observed_at }}",
+              "type": "string"
+            },
+            {
+              "id": "ca35f2ce-0a6f-4d90-b818-ec9d6a70a572",
+              "name": "observation_status",
+              "value": "={{ $json.body.observation_status }}",
+              "type": "string"
+            },
+            {
+              "id": "d5ae70d0-b51e-4217-a260-2ca02aa637d5",
+              "name": "observation_value",
+              "value": "={{ $json.body.observation_value }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "2d8c7340-4317-4df9-94fe-4516606278e6",
+      "name": "Normalize Hospital A"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://medbridge-github-api-1:8000/patients",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"medbridge_id\": \"{{ $('Normalize Hospital A').first().json.medbridge_id }}\",\n  \"full_name\": \"{{ $('Normalize Hospital A').first().json.full_name }}\",\n  \"date_of_birth\": \"{{ $('Normalize Hospital A').first().json.date_of_birth }}\",\n  \"blood_group\": \"{{ $('Normalize Hospital A').first().json.blood_group }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        864,
+        336
+      ],
+      "id": "eb55dae8-a6d2-4c5f-9a4b-22c326ffe647",
+      "name": "Create Patient"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://medbridge-github-api-1:8000/clinical/patient-mappings",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"patient_id\": {{ $json.id }},\n  \"hospital_id\": 1,\n  \"external_patient_id\": \"{{ $('Normalize Hospital A').item.json.external_patient_id }}\",\n  \"source_system\": \"Demo Hospital A HIS\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1088,
+        336
+      ],
+      "id": "204a5ca4-3956-427b-bf60-87a2749cf97c",
+      "name": "Create Patient Mapping"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://medbridge-github-api-1:8000/clinical/encounters",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"patient_id\": {{ $('Patient Found?').first().json.patient?.id || $('Create Patient').first().json.id }},\n  \"external_patient_id\": \"{{ $('Normalize Hospital A').item.json.external_patient_id }}\",\n  \"hospital_id\": 1,\n  \"encounter_type\": \"{{ $('Normalize Hospital A').first().json.encounter_type }}\",\n  \"reason\": \"{{ $('Normalize Hospital A').item.json.diagnosis_name }}\",\n \"started_at\": \"{{ $('Normalize Hospital A').first().json.started_at }}\",\n\"ended_at\": \"{{ $('Normalize Hospital A').first().json.ended_at }}\",\n  \"attending_doctor\": \"{{ $('Normalize Hospital A').first().json.attending_doctor }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1648,
+        96
+      ],
+      "id": "5bbbab35-226a-4c4f-b70c-3e353e417e03",
+      "name": "Create Encounter"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://medbridge-github-api-1:8000/clinical/conditions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"patient_id\": {{ $json.patient_id }},\n  \"encounter_id\": {{ $json.id }},\n  \"code\": \"{{ $('Normalize Hospital A').first().json.condition_code }}\",\n  \"name\": \"{{ $('Normalize Hospital A').first().json.diagnosis_name }}\",\n  \"clinical_status\": \"{{ $('Normalize Hospital A').first().json.condition_status }}\",\n  \"diagnosed_on\": \"{{ $('Normalize Hospital A').first().json.condition_diagnosed_on }}\",\n  \"notes\": \"{{ $('Normalize Hospital A').first().json.condition_notes }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1872,
+        96
+      ],
+      "id": "50c415d7-d0e0-4bcd-9676-4d3045a45c10",
+      "name": "Create Condition"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://medbridge-github-api-1:8000/clinical/allergies",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"patient_id\": {{ $json.patient_id }},\n  \"substance\": \"{{ $('Normalize Hospital A').first().json.allergy_substance }}\",\n  \"reaction\": \"{{ $('Normalize Hospital A').first().json.allergy_reaction }}\",\n  \"severity\": \"{{ $('Normalize Hospital A').first().json.allergy_severity }}\",\n  \"verified\": {{ $('Normalize Hospital A').first().json.allergy_verified }},\n  \"recorded_on\": \"{{ $('Normalize Hospital A').first().json.allergy_recorded_on }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2096,
+        96
+      ],
+      "id": "7c7da81c-5946-446f-9b9d-4851807409fc",
+      "name": "Create Allergy"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://medbridge-github-api-1:8000/clinical/medications",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "=name",
+              "value": "={{ $('Normalize Hospital A').first().json.medication_name }}"
+            },
+            {
+              "name": "generic_name",
+              "value": "={{ $('Normalize Hospital A').first().json.medication_generic_name }}"
+            },
+            {
+              "name": "form",
+              "value": "={{ $('Normalize Hospital A').first().json.medication_form }}"
+            },
+            {
+              "name": "strength",
+              "value": "={{ $('Normalize Hospital A').first().json.medication_strength }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2320,
+        96
+      ],
+      "id": "5ea3ab20-387b-44fa-a94e-8ba50671e898",
+      "name": "Create Medication"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://medbridge-github-api-1:8000/clinical/prescriptions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"patient_id\": {{ $('Create Condition').item.json.patient_id }},\n  \"medication_id\": {{ $('Create Medication').item.json.id }},\n  \"encounter_id\": {{ $('Create Encounter').item.json.id }},\n  \"dose\": \"{{ $('Normalize Hospital A').first().json.prescription_dose }}\",\n  \"frequency\": \"{{ $('Normalize Hospital A').first().json.prescription_frequency }}\",\n  \"route\": \"{{ $('Normalize Hospital A').first().json.prescription_route }}\",\n  \"started_on\": \"{{ $('Normalize Hospital A').first().json.prescription_started_on }}\",\n  \"ended_on\": \"{{ $('Normalize Hospital A').first().json.prescription_ended_on }}\",\n  \"status\": \"{{ $('Normalize Hospital A').first().json.prescription_status }}\",\n  \"instructions\": \"{{ $('Normalize Hospital A').first().json.prescription_instructions }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2544,
+        96
+      ],
+      "id": "a31e09a5-834b-4ac8-acaa-e999a45e1192",
+      "name": "Create Prescription"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://medbridge-github-api-1:8000/clinical/observations",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "=patient_id",
+              "value": "={{ $json.patient_id }}"
+            },
+            {
+              "name": "encounter_id",
+              "value": "={{ $json.encounter_id }}"
+            },
+            {
+              "name": "name",
+              "value": "={{ $('Normalize Hospital A').first().json.observation_name }}"
+            },
+            {
+              "name": "value",
+              "value": "={{ $('Normalize Hospital A').first().json.observation_value }}"
+            },
+            {
+              "name": "unit",
+              "value": "={{ $('Normalize Hospital A').first().json.observation_unit }}"
+            },
+            {
+              "name": "reference_range",
+              "value": "={{ $('Normalize Hospital A').first().json.observation_reference_range }}"
+            },
+            {
+              "name": "observed_at",
+              "value": "={{ $('Normalize Hospital A').first().json.observation_observed_at }}"
+            },
+            {
+              "name": "status",
+              "value": "={{ $('Normalize Hospital A').first().json.observation_status }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2768,
+        96
+      ],
+      "id": "c0237f7b-f30b-464f-9b7d-de83ac7d0163",
+      "name": "Create Observation"
+    },
+    {
+      "parameters": {
+        "url": "={{ 'http://medbridge-github-api-1:8000/clinical/resolve/1/' + $('Normalize Hospital A').first().json.external_patient_id }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        448,
+        0
+      ],
+      "id": "b8bf4089-eabe-4c8c-afe4-1664dfdfa4aa",
+      "name": "Resolve Patient Identity"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9b9f8b70-1c3a-4f70-aa2d-a70f7c60094b",
+              "leftValue": "={{ $json.patient?.id?.toString() }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        656,
+        0
+      ],
+      "id": "d3f7193f-eead-4663-82e6-7631654bd25b",
+      "name": "Patient Found?"
+    },
+    {
+      "parameters": {
+        "url": "={{ 'http://medbridge-github-api-1:8000/clinical/patients/' + $('Patient Found?').first().json.patient.id + '/record' }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        864,
+        -240
+      ],
+      "id": "b642ccb6-afb8-4de8-a20d-b92b364e6609",
+      "name": "Get Existing Patient Record"
+    },
+    {
+      "parameters": {
+        "url": "={{   'http://medbridge-github-api-1:8000/clinical/patients/' +   $('Patient Found?').first().json.patient.id +   '/record' }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1088,
+        -240
+      ],
+      "id": "a4bc29fa-4acf-4e69-a11a-7dde733b4524",
+      "name": "Check Existing Encounter"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "81b0cf4f-6fd1-429d-ad9f-e96dec5f026e",
+              "leftValue": "={{\n  $json.encounters.some(\n    encounter =>\n      encounter.hospital_id === 1 &&\n      encounter.started_at === $('Normalize Hospital A').first().json.started_at\n  )\n}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1312,
+        -240
+      ],
+      "id": "b44b4c97-4344-447c-9db3-cc4cb2304692",
+      "name": "Duplicate Check"
+    },
+    {
+      "parameters": {
+        "url": "={{\n  'http://medbridge-github-api-1:8000/clinical/patients/' +\n  (\n    $('Create Observation').isExecuted\n      ? $('Create Observation').first().json.patient_id\n      : $('Patient Found?').first().json.patient.id\n  ) +\n  '/record'\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2944,
+        -256
+      ],
+      "id": "394e011f-0686-4742-b913-cd679251105d",
+      "name": "Get Unified Clinical Record"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Hospital A Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Hospital A",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Hospital A": {
+      "main": [
+        [
+          {
+            "node": "Resolve Patient Identity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Patient": {
+      "main": [
+        [
+          {
+            "node": "Create Patient Mapping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Patient Mapping": {
+      "main": [
+        [
+          {
+            "node": "Create Encounter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Encounter": {
+      "main": [
+        [
+          {
+            "node": "Create Condition",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Condition": {
+      "main": [
+        [
+          {
+            "node": "Create Allergy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Allergy": {
+      "main": [
+        [
+          {
+            "node": "Create Medication",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Medication": {
+      "main": [
+        [
+          {
+            "node": "Create Prescription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Prescription": {
+      "main": [
+        [
+          {
+            "node": "Create Observation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Patient Identity": {
+      "main": [
+        [
+          {
+            "node": "Patient Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Patient Found?": {
+      "main": [
+        [
+          {
+            "node": "Get Existing Patient Record",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Patient",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Existing Patient Record": {
+      "main": [
+        [
+          {
+            "node": "Check Existing Encounter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Existing Encounter": {
+      "main": [
+        [
+          {
+            "node": "Duplicate Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Duplicate Check": {
+      "main": [
+        [
+          {
+            "node": "Get Unified Clinical Record",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Encounter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Observation": {
+      "main": [
+        [
+          {
+            "node": "Get Unified Clinical Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "2cfdf754-0845-49a7-a99d-44b7a492be9a",
+  "meta": {
+    "instanceId": "7aba7b876bf1015e979c225ca803b6e9e9c63478c174343070fe02165821ce65"
+  },
+  "nodeGroups": [],
+  "id": "gBDCQVRgZDBPYQUw",
+  "tags": []
+}

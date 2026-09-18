@@ -1,0 +1,594 @@
+{
+  "name": "Hospital B workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "41d67443-b5b9-4c7c-b42d-0beddd4292d1",
+              "name": "medbridge_id",
+              "value": "={{ 'MB-HOSP-B-' + $json.body.member.mrn }}",
+              "type": "string"
+            },
+            {
+              "id": "ba44cfc3-74c6-452c-b098-f46561ee2d21",
+              "name": "date_of_birth",
+              "value": "={{ $json.body.member.date_of_birth }}",
+              "type": "string"
+            },
+            {
+              "id": "799bd560-7e8d-415c-83ac-f37cd8edb0f0",
+              "name": "blood_group",
+              "value": "={{ $json.body.member.blood_group }}",
+              "type": "string"
+            },
+            {
+              "id": "61b88849-7b16-40f6-9e68-3e7757a3ad48",
+              "name": "full_name",
+              "value": "={{ $json.body.member.name }}",
+              "type": "string"
+            },
+            {
+              "id": "67aa6c70-5731-4e9d-b2a6-cec5f127bd39",
+              "name": "encounter",
+              "value": "={{ $('Receive Hospital B Data').first().json.body.encounter }}",
+              "type": "object"
+            },
+            {
+              "id": "c6ae51b9-04ce-4682-8334-f31b8d071f30",
+              "name": "condition",
+              "value": "={{ $('Receive Hospital B Data').first().json.body.condition }}",
+              "type": "object"
+            },
+            {
+              "id": "cafffb48-2c66-4c42-b594-279a01000c01",
+              "name": "allergy",
+              "value": "={{ $('Receive Hospital B Data').first().json.body.allergy }}",
+              "type": "object"
+            },
+            {
+              "id": "a0d91dfb-d825-4163-add6-b7049437f54e",
+              "name": "medication",
+              "value": "={{ $('Receive Hospital B Data').first().json.body.medication }}",
+              "type": "object"
+            },
+            {
+              "id": "e6bb7a2a-ae32-46df-8777-c48cd3bebd15",
+              "name": "prescription",
+              "value": "={{ $('Receive Hospital B Data').first().json.body.prescription }}",
+              "type": "object"
+            },
+            {
+              "id": "58068695-6a76-48f4-a654-79b8ef8362b0",
+              "name": "observation",
+              "value": "={{ $('Receive Hospital B Data').first().json.body.observation }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "ad05bf46-fc0f-441d-a276-5657203d4ae1",
+      "name": "Normalize Hospital B Payload"
+    },
+    {
+      "parameters": {
+        "url": "={{ 'http://medbridge-github-api-1:8000/clinical/resolve/' + $('Find Hospital B').first().json.id + '/' + $('Receive Hospital B Data').first().json.body.member.mrn }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        704,
+        0
+      ],
+      "id": "62c5e8be-1ce6-4477-b39e-aa3d382c9e73",
+      "name": "Resolve Patient Identity"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://medbridge-github-api-1:8000/patients",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"medbridge_id\": \"{{ $('Normalize Hospital B Payload').first().json.medbridge_id }}\",\n  \"full_name\": \"{{ $('Normalize Hospital B Payload').first().json.full_name }}\",\n  \"date_of_birth\": \"{{ $('Normalize Hospital B Payload').first().json.date_of_birth }}\",\n  \"blood_group\": \"{{ $('Normalize Hospital B Payload').first().json.blood_group }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1120,
+        304
+      ],
+      "id": "c365557d-5a4e-46f4-a403-ea3d775cc35f",
+      "name": "Create MedBridge Patient"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://medbridge-github-api-1:8000/clinical/patient-mappings",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"patient_id\": {{ $('Patient Found?').first().json.patient?.id || $('Create MedBridge Patient').first().json.id }},\n  \"hospital_id\": {{ $('Find Hospital B').first().json.id }},\n  \"external_patient_id\": \"{{ $('Receive Hospital B Data').first().json.body.member.mrn }}\",\n  \"source_system\": \"hospital-b-v2\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1344,
+        304
+      ],
+      "id": "9b7a3970-2f6b-46e5-ae7b-ab8b6fffff09",
+      "name": "Create Patient mapping"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://medbridge-github-api-1:8000/clinical/encounters",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n{\n  \"patient_id\": $('Create MedBridge Patient').isExecuted\n    ? $('Create MedBridge Patient').first().json.id\n    : $('Resolve Patient Identity').first().json.patient.id,\n\n  \"hospital_id\": $('Find Hospital B').first().json.id,\n\n  \"encounter_type\": $('Normalize Hospital B Payload').first().json.encounter.encounter_type,\n\n  \"reason\": $('Normalize Hospital B Payload').first().json.encounter.reason,\n\n  \"started_at\": $('Normalize Hospital B Payload').first().json.encounter.started_at,\n\n  \"ended_at\": $('Normalize Hospital B Payload').first().json.encounter.ended_at\n    ? $('Normalize Hospital B Payload').first().json.encounter.ended_at\n    : null,\n\n  \"attending_doctor\": $('Normalize Hospital B Payload').first().json.encounter.attending_doctor\n}\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1552,
+        304
+      ],
+      "id": "570a8d11-8ffb-42cb-a9ff-f038d2c85f28",
+      "name": "Create Encounter"
+    },
+    {
+      "parameters": {
+        "url": "={{\n  'http://medbridge-github-api-1:8000/clinical/patients/' +\n  (\n    $('Create Observation').isExecuted\n      ? $('Create Observation').first().json.patient_id\n      : $('Patient Found?').first().json.patient.id\n  ) +\n  '/record'\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2784,
+        -32
+      ],
+      "id": "16237f4c-2ca4-4f16-bb09-b7f1681c1b13",
+      "name": "Get Unified Clinical Record"
+    },
+    {
+      "parameters": {
+        "url": "={{ 'http://medbridge-github-api-1:8000/clinical/patients/' + $json.patient.id + '/record' }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1104,
+        -336
+      ],
+      "id": "23e1dd56-2f93-458a-a445-0b03261460dc",
+      "name": "Get Existing Patient Record"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "60a4724e-d8ee-4f67-a879-0d01171217a6",
+              "leftValue": "={{ $json.patient?.id?.toString() }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        944,
+        0
+      ],
+      "id": "a2c4a532-89bd-46e3-8126-c8596d5b4322",
+      "name": "Patient Found?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://medbridge-github-api-1:8000/clinical/hospitals",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"code\": \"HOSP-B\",\n  \"name\": \"Hospital B Demonstration Facility\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        464,
+        0
+      ],
+      "id": "758b7841-4bc6-4348-ba1d-9a5a7a136ba9",
+      "name": "Find Hospital B"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hospital-b-ingest",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "7aa2c5c8-ce32-4347-b1d4-7075994ca067",
+      "name": "Receive Hospital B Data",
+      "webhookId": "a84546de-fb57-472e-8163-a048b767132b"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://medbridge-github-api-1:8000/clinical/conditions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n{\n  \"patient_id\": $('Create MedBridge Patient').isExecuted\n    ? $('Create MedBridge Patient').first().json.id\n    : $('Resolve Patient Identity').first().json.patient.id,\n\n  \"encounter_id\": $('Create Encounter').first().json.id,\n\n  \"code\": $('Normalize Hospital B Payload').first().json.condition.code,\n\n  \"name\": $('Normalize Hospital B Payload').first().json.condition.name,\n\n  \"clinical_status\": $('Normalize Hospital B Payload').first().json.condition.clinical_status,\n\n  \"diagnosed_on\": $('Normalize Hospital B Payload').first().json.condition.diagnosed_on,\n\n  \"notes\": $('Normalize Hospital B Payload').first().json.condition.notes\n}\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1776,
+        304
+      ],
+      "id": "06a3dc05-d97d-471a-a861-dfdd8060011b",
+      "name": "Create Condition"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://medbridge-github-api-1:8000/clinical/allergies",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n{\n  \"patient_id\": $('Create MedBridge Patient').isExecuted\n    ? $('Create MedBridge Patient').first().json.id\n    : $('Resolve Patient Identity').first().json.patient.id,\n\n  \"substance\": $('Normalize Hospital B Payload').first().json.allergy.substance,\n\n  \"reaction\": $('Normalize Hospital B Payload').first().json.allergy.reaction,\n\n  \"severity\": $('Normalize Hospital B Payload').first().json.allergy.severity,\n\n  \"verified\": $('Normalize Hospital B Payload').first().json.allergy.verified,\n\n  \"recorded_on\": $('Normalize Hospital B Payload').first().json.allergy.recorded_on\n}\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2000,
+        304
+      ],
+      "id": "49ae6c39-6716-4942-9004-fd2308f665e3",
+      "name": "Create Allergy"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://medbridge-github-api-1:8000/clinical/medications",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"name\": \"{{ $('Normalize Hospital B Payload').first().json.medication.name }}\",\n  \"generic_name\": \"{{ $('Normalize Hospital B Payload').first().json.medication.generic_name }}\",\n  \"form\": \"{{ $('Normalize Hospital B Payload').first().json.medication.form }}\",\n  \"strength\": \"{{ $('Normalize Hospital B Payload').first().json.medication.strength }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2224,
+        304
+      ],
+      "id": "f7380d41-7012-46c3-8c7a-8a0f5ba19d09",
+      "name": "Create Medication"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://medbridge-github-api-1:8000/clinical/prescriptions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n{\n  \"patient_id\": $('Create MedBridge Patient').isExecuted\n    ? $('Create MedBridge Patient').first().json.id\n    : $('Resolve Patient Identity').first().json.patient.id,\n\n  \"medication_id\": $('Create Medication').first().json.id,\n\n  \"encounter_id\": $('Create Encounter').first().json.id,\n\n  \"dose\": $('Normalize Hospital B Payload').first().json.prescription.dose,\n\n  \"frequency\": $('Normalize Hospital B Payload').first().json.prescription.frequency,\n\n  \"route\": $('Normalize Hospital B Payload').first().json.prescription.route,\n\n  \"started_on\": $('Normalize Hospital B Payload').first().json.prescription.started_on,\n\n  \"ended_on\": $('Normalize Hospital B Payload').first().json.prescription.ended_on,\n\n  \"status\": $('Normalize Hospital B Payload').first().json.prescription.status,\n\n  \"instructions\": $('Normalize Hospital B Payload').first().json.prescription.instructions\n}\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2448,
+        304
+      ],
+      "id": "95e639c5-cc78-477a-a9fa-f724bc301e4c",
+      "name": "Create Prescription"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://medbridge-github-api-1:8000/clinical/observations",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n{\n  \"patient_id\": $('Create MedBridge Patient').isExecuted\n    ? $('Create MedBridge Patient').first().json.id\n    : $('Resolve Patient Identity').first().json.patient.id,\n\n  \"encounter_id\": $('Create Encounter').first().json.id,\n\n  \"name\": $('Normalize Hospital B Payload').first().json.observation.name,\n\n  \"value\": String($('Normalize Hospital B Payload').first().json.observation.value),\n\n  \"unit\": $('Normalize Hospital B Payload').first().json.observation.unit,\n\n  \"reference_range\": $('Normalize Hospital B Payload').first().json.observation.reference_range,\n\n  \"observed_at\": $('Normalize Hospital B Payload').first().json.observation.observed_at,\n\n  \"status\": $('Normalize Hospital B Payload').first().json.observation.status\n}\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2672,
+        304
+      ],
+      "id": "aabb9a7b-38fa-4cd0-a123-20a6f537e1a9",
+      "name": "Create Observation"
+    },
+    {
+      "parameters": {
+        "url": "={{   'http://medbridge-github-api-1:8000/clinical/patients/' +   ($('Patient Found?').first().json.patient?.id || $('Create MedBridge Patient').first().json.id) +   '/record' }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1152,
+        -16
+      ],
+      "id": "ced5675a-5f20-483d-8db4-b12b701f761e",
+      "name": "Check Existing Encounter"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d048adab-94da-4243-833a-4cd2bf233558",
+              "leftValue": "={{\n  $json.encounters.some(\n    encounter =>\n      encounter.hospital_id === $('Find Hospital B').first().json.id &&\n      encounter.started_at === $('Normalize Hospital B Payload').first().json.encounter.started_at\n  )\n}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1392,
+        -16
+      ],
+      "id": "a8a067ce-30ab-4fe1-8833-fbedd76c57ef",
+      "name": "Duplicate Check"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Normalize Hospital B Payload": {
+      "main": [
+        [
+          {
+            "node": "Find Hospital B",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Patient Identity": {
+      "main": [
+        [
+          {
+            "node": "Patient Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create MedBridge Patient": {
+      "main": [
+        [
+          {
+            "node": "Create Patient mapping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Patient mapping": {
+      "main": [
+        [
+          {
+            "node": "Create Encounter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Encounter": {
+      "main": [
+        [
+          {
+            "node": "Create Condition",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Patient Found?": {
+      "main": [
+        [
+          {
+            "node": "Get Existing Patient Record",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Existing Encounter",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create MedBridge Patient",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Hospital B": {
+      "main": [
+        [
+          {
+            "node": "Resolve Patient Identity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Receive Hospital B Data": {
+      "main": [
+        [
+          {
+            "node": "Normalize Hospital B Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Condition": {
+      "main": [
+        [
+          {
+            "node": "Create Allergy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Allergy": {
+      "main": [
+        [
+          {
+            "node": "Create Medication",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Medication": {
+      "main": [
+        [
+          {
+            "node": "Create Prescription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Prescription": {
+      "main": [
+        [
+          {
+            "node": "Create Observation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Observation": {
+      "main": [
+        [
+          {
+            "node": "Get Unified Clinical Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Existing Patient Record": {
+      "main": [
+        []
+      ]
+    },
+    "Check Existing Encounter": {
+      "main": [
+        [
+          {
+            "node": "Duplicate Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Duplicate Check": {
+      "main": [
+        [
+          {
+            "node": "Get Unified Clinical Record",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Encounter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "eab84700-89d9-46c9-9195-cb96a08f9f1f",
+  "meta": {
+    "instanceId": "7aba7b876bf1015e979c225ca803b6e9e9c63478c174343070fe02165821ce65"
+  },
+  "nodeGroups": [],
+  "id": "pyr1iSX3gcmVWgTF",
+  "tags": []
+}
