@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user, require_role, require_hospital_access
 from app.models.hospital import Hospital
 from app.models.patient import Patient
 from app.models.clinical import (
