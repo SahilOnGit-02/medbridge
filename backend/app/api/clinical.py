@@ -95,7 +95,7 @@ def create_hospital(
 def create_mapping(
     payload: MappingCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_hospital_access),
 ):
     require_payload_hospital_access(current_user, payload.hospital_id)
     existing = db.scalar(
@@ -333,7 +333,7 @@ def resolve_patient_identity(
     hospital_id: int,
     external_patient_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_hospital_access),
 ):
     mapping = db.scalar(
         select(PatientHospitalMapping).where(
