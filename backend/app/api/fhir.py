@@ -2,7 +2,6 @@
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.api.deps import get_current_user
 from app.models.patient import Patient
 from app.models.hospital import Hospital
 from app.api.clinical import require_patient_hospital_access
