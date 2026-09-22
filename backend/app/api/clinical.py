@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.api.deps import get_current_user
 from app.models.hospital import Hospital
 from app.models.patient import Patient
 from app.models.clinical import (
@@ -59,6 +60,7 @@ def create_and_refresh(db, model, payload):
 def create_hospital(
     payload: HospitalCreate,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     existing = db.scalar(
         select(Hospital).where(Hospital.code == payload.code)
@@ -78,6 +80,7 @@ def create_hospital(
 def create_mapping(
     payload: MappingCreate,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     existing = db.scalar(
         select(PatientHospitalMapping).where(
@@ -106,6 +109,7 @@ def create_mapping(
 def create_encounter(
     payload: EncounterCreate,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     existing = db.scalar(
         select(Encounter).where(
@@ -134,6 +138,7 @@ def create_encounter(
 def create_condition(
     payload: ConditionCreate,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     existing = db.scalar(
         select(Condition).where(
@@ -161,6 +166,7 @@ def create_condition(
 def create_allergy(
     payload: AllergyCreate,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     existing = db.scalar(
         select(Allergy).where(
@@ -188,6 +194,7 @@ def create_allergy(
 def create_medication(
     payload: MedicationCreate,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     existing = db.scalar(
         select(Medication).where(
@@ -216,6 +223,7 @@ def create_medication(
 def create_prescription(
     payload: PrescriptionCreate,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     existing = db.scalar(
         select(Prescription).where(
@@ -244,6 +252,7 @@ def create_prescription(
 def create_observation(
     payload: ObservationCreate,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     existing = db.scalar(
         select(Observation).where(
@@ -271,6 +280,7 @@ def create_observation(
 def get_unified_clinical_record(
     patient_id: int,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     patient = db.get(Patient, patient_id)
 
@@ -307,6 +317,7 @@ def resolve_patient_identity(
     hospital_id: int,
     external_patient_id: str,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     mapping = db.scalar(
         select(PatientHospitalMapping).where(

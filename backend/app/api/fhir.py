@@ -2,6 +2,7 @@
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.api.deps import get_current_user
 from app.models.patient import Patient
 from app.models.hospital import Hospital
 from app.models.clinical import (
@@ -30,6 +31,7 @@ router = APIRouter(prefix="/fhir", tags=["fhir"])
 def get_fhir_patient(
     patient_id: int,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     patient = db.get(Patient, patient_id)
 
@@ -43,6 +45,7 @@ def get_fhir_patient(
 def get_fhir_hospital(
     hospital_id: int,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     hospital = db.get(Hospital, hospital_id)
 
@@ -56,6 +59,7 @@ def get_fhir_hospital(
 def get_fhir_encounter(
     encounter_id: int,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     encounter = db.get(Encounter, encounter_id)
 
@@ -69,6 +73,7 @@ def get_fhir_encounter(
 def get_fhir_condition(
     condition_id: int,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     condition = db.get(Condition, condition_id)
 
@@ -82,6 +87,7 @@ def get_fhir_condition(
 def get_fhir_allergy(
     allergy_id: int,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     allergy = db.get(Allergy, allergy_id)
 
@@ -95,6 +101,7 @@ def get_fhir_allergy(
 def get_fhir_medication(
     medication_id: int,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     medication = db.get(Medication, medication_id)
 
@@ -108,6 +115,7 @@ def get_fhir_medication(
 def get_fhir_prescription(
     prescription_id: int,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     prescription = db.get(Prescription, prescription_id)
 
@@ -121,6 +129,7 @@ def get_fhir_prescription(
 def get_fhir_observation(
     observation_id: int,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     observation = db.get(Observation, observation_id)
 
@@ -133,6 +142,7 @@ def get_fhir_observation(
 def get_fhir_patient_bundle(
     patient_id: int,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     patient = db.get(Patient, patient_id)
 

@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.patient import Patient
 from app.schemas.patient import PatientCreate, PatientRead, PatientSearchResult
@@ -12,7 +13,11 @@ router = APIRouter(prefix="/patients", tags=["patients"])
 
 
 @router.post("", response_model=PatientRead, status_code=201)
-def create_patient(payload: PatientCreate, db: Session = Depends(get_db)):
+def create_patient(
+    payload: PatientCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
     existing = db.scalar(
         select(Patient).where(Patient.medbridge_id == payload.medbridge_id)
     )
@@ -35,9 +40,9 @@ def search_patients(
     q: str | None = Query(default=None, min_length=1),
     date_of_birth: date | None = None,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     query = select(Patient)
-
     filters = []
 
     if q:
@@ -66,7 +71,11 @@ def search_patients(
 
 
 @router.get("/{medbridge_id}", response_model=PatientRead)
-def get_patient(medbridge_id: str, db: Session = Depends(get_db)):
+def get_patient(
+    medbridge_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
     patient = db.scalar(
         select(Patient).where(Patient.medbridge_id == medbridge_id)
     )
