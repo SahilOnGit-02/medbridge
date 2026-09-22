@@ -577,6 +577,47 @@ const recordMatches = recordSearchTerm && record
               <span>Medications</span>
             </div>
           </div>
+
+        {record && (
+<div className="source-documents">
+  <div className="source-documents-header">
+    <div>
+      <p className="card-label">SOURCE DOCUMENTS</p>
+      <h4>Diagnostic reports</h4>
+    </div>
+
+    <span className="card-badge">2</span>
+  </div>
+
+  <div className="source-document-list">
+    <a
+      className="source-document"
+      href="/demo-reports/MedBridge_Rohan_Mehta_CBC_CRP_Synthetic_Report.pdf"
+      target="_blank"
+      rel="noreferrer"
+    >
+      <div>
+        <strong>CBC + CRP Blood Test</strong>
+        <span>Hospital A - 20 Aug 2026</span>
+      </div>
+      <span>View PDF -&gt;</span>
+    </a>
+
+    <a
+      className="source-document"
+      href="/demo-reports/MedBridge_Rohan_Mehta_Typhoid_Widal_Synthetic_Report.pdf"
+      target="_blank"
+      rel="noreferrer"
+    >
+      <div>
+        <strong>Typhoid / Widal Test</strong>
+        <span>Hospital B - 22 Aug 2026</span>
+      </div>
+      <span>View PDF -&gt;</span>
+    </a>
+  </div>
+</div>
+        )}
         </article>
 
       </section>
@@ -772,5 +813,13 @@ const recordMatches = recordSearchTerm && record
 }
 
 export default App;
+
+
+
+
+
+
+
+
 
 
