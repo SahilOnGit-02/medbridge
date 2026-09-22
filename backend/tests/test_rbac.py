@@ -68,3 +68,30 @@ def test_access_token_rejects_tampered_token():
 
     with pytest.raises(Exception):
         decode_access_token(tampered_token)
+from app.core.security import hash_password, verify_password
+
+
+def test_password_hash_and_verify():
+    password = "MedBridgeTest123!"
+
+    hashed = hash_password(password)
+
+    assert hashed != password
+    assert hashed.startswith("$argon2")
+    assert verify_password(password, hashed)
+
+
+def test_password_verification_rejects_wrong_password():
+    hashed = hash_password("MedBridgeTest123!")
+
+    assert not verify_password("WrongPassword!", hashed)
+
+
+def test_access_token_contains_user_id_and_role():
+    token = create_access_token(123, "doctor")
+
+    payload = decode_access_token(token)
+
+    assert payload["sub"] == "123"
+    assert payload["role"] == "doctor"
+    assert "exp" in payload
