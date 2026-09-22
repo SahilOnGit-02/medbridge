@@ -147,6 +147,28 @@ def create_encounter(
         payload,
     )
 
+def require_patient_hospital_access(db, current_user, patient_id: int):
+    if current_user.role == "system_admin":
+        return
+
+    if current_user.role not in {"doctor", "hospital_admin"}:
+        raise HTTPException(
+            status_code=403,
+            detail="Insufficient permissions",
+        )
+
+    mapping = db.scalar(
+        select(PatientHospitalMapping).where(
+            PatientHospitalMapping.patient_id == patient_id,
+            PatientHospitalMapping.hospital_id == current_user.hospital_id,
+        )
+    )
+
+    if mapping is None:
+        raise HTTPException(
+            status_code=403,
+            detail="User does not have access to this patient",
+        )
 
 @router.post(
     "/conditions",
@@ -158,6 +180,12 @@ def create_condition(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    require_patient_hospital_access(
+        db,
+        current_user,
+        payload.patient_id,
+    )
+
     existing = db.scalar(
         select(Condition).where(
             Condition.patient_id == payload.patient_id,
