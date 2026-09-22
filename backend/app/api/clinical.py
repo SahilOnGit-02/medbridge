@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_role
 from app.models.hospital import Hospital
 from app.models.patient import Patient
 from app.models.clinical import (
@@ -60,7 +60,7 @@ def create_and_refresh(db, model, payload):
 def create_hospital(
     payload: HospitalCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_role("hospital_admin", "system_admin")),
 ):
     existing = db.scalar(
         select(Hospital).where(Hospital.code == payload.code)
