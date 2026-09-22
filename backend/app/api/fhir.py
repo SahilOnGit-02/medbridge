@@ -88,6 +88,12 @@ def get_fhir_condition(
     if condition is None:
         raise HTTPException(status_code=404, detail="Condition not found")
 
+    require_patient_hospital_access(
+        db,
+        current_user,
+        condition.patient_id,
+    )
+
     return condition_to_fhir(condition)
 
 
