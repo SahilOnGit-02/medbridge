@@ -6,6 +6,7 @@ const API_BASE_URL = "http://localhost:8001";
 function App() {
   const [searchId, setSearchId] = useState("");
 const [searchResults, setSearchResults] = useState([]);
+const [recordSearch, setRecordSearch] = useState("");
 const [patient, setPatient] = useState(null);
 const [loading, setLoading] = useState(false);
 const [error, setError] = useState("");
@@ -91,6 +92,88 @@ async function selectPatient(selectedPatient) {
     setLoading(false);
   }
 }
+
+const recordSearchTerm = recordSearch.trim().toLowerCase();
+
+const recordMatches = recordSearchTerm && record
+  ? {
+      encounters: record.encounters.filter((encounter) =>
+        [
+          encounter.reason,
+          encounter.encounter_type,
+          encounter.attending_doctor,
+        ]
+          .filter(Boolean)
+          .some((value) =>
+            value.toLowerCase().includes(recordSearchTerm)
+          )
+      ),
+
+      conditions: record.conditions.filter((condition) =>
+        [
+          condition.name,
+          condition.code,
+          condition.clinical_status,
+          condition.notes,
+        ]
+          .filter(Boolean)
+          .some((value) =>
+            value.toLowerCase().includes(recordSearchTerm)
+          )
+      ),
+
+      allergies: record.allergies.filter((allergy) =>
+        [
+          allergy.substance,
+          allergy.reaction,
+          allergy.severity,
+        ]
+          .filter(Boolean)
+          .some((value) =>
+            value.toLowerCase().includes(recordSearchTerm)
+          )
+      ),
+
+      prescriptions: record.prescriptions.filter((prescription) =>
+        [
+          prescription.medication?.name,
+          prescription.medication?.generic_name,
+          prescription.dose,
+          prescription.frequency,
+          prescription.route,
+          prescription.status,
+          prescription.instructions,
+        ]
+          .filter(Boolean)
+          .some((value) =>
+            value.toLowerCase().includes(recordSearchTerm)
+          )
+      ),
+
+    observations: record.observations.filter((observation) => {
+  const searchableValues = [
+    observation.name,
+    observation.value,
+    observation.unit,
+    observation.reference_range,
+    observation.status,
+  ];
+
+  const aliases = {
+    crp: "c-reactive protein",
+  };
+
+  const expandedSearchTerm =
+    aliases[recordSearchTerm] || recordSearchTerm;
+
+  return searchableValues
+    .filter(Boolean)
+    .some((value) =>
+      value.toLowerCase().includes(expandedSearchTerm)
+    );
+}),
+    }
+  : null;
 
   return (
     <div className="app-shell">
@@ -459,6 +542,20 @@ async function selectPatient(selectedPatient) {
             </div>
           </div>
 
+<div className="record-search">
+  <label htmlFor="record-search-input">
+    Search clinical record
+  </label>
+
+  <input
+    id="record-search-input"
+    type="text"
+    placeholder="e.g. bronchitis, penicillin, CRP"
+    value={recordSearch}
+    onChange={(event) => setRecordSearch(event.target.value)}
+  />
+</div>
+
           <div className="record-stats">
             <div>
               <strong>{record ? record.encounters.length : "-"}</strong>
@@ -497,13 +594,13 @@ async function selectPatient(selectedPatient) {
 
           {record ? (
             <div className="timeline-list">
-              {record.encounters
-                .slice()
-                .sort(
-                  (a, b) =>
-                    new Date(b.started_at) - new Date(a.started_at)
-                )
-                .map((encounter) => (
+              {(recordSearchTerm ? recordMatches.encounters : record.encounters)
+  .slice()
+  .sort(
+    (a, b) =>
+      new Date(b.started_at) - new Date(a.started_at)
+  )
+  .map((encounter) => (
                   <div className="timeline-item" key={encounter.id}>
                     <div className="timeline-marker"></div>
 
@@ -559,7 +656,8 @@ async function selectPatient(selectedPatient) {
               </div>
 
               <div className="detail-list">
-                {record.conditions.map((condition) => (
+                {(recordSearchTerm ? recordMatches.conditions : record.conditions).map(
+  (condition) => (
                   <div className="detail-item" key={condition.id}>
                     <div>
                       <strong>{condition.name}</strong>
@@ -572,7 +670,8 @@ async function selectPatient(selectedPatient) {
                       {condition.diagnosed_on || "Date not recorded"}
                     </small>
                   </div>
-                ))}
+                )
+              )}
               </div>
             </article>
 
@@ -586,7 +685,8 @@ async function selectPatient(selectedPatient) {
               </div>
 
               <div className="detail-list">
-                {record.allergies.map((allergy) => (
+                {(recordSearchTerm ? recordMatches.allergies : record.allergies).map(
+  (allergy) => (
                   <div className="detail-item" key={allergy.id}>
                     <div>
                       <strong>{allergy.substance}</strong>
@@ -599,7 +699,8 @@ async function selectPatient(selectedPatient) {
                       {allergy.verified ? "Verified" : "Unverified"}
                     </small>
                   </div>
-                ))}
+                )
+              )}
               </div>
             </article>
 
@@ -613,7 +714,10 @@ async function selectPatient(selectedPatient) {
               </div>
 
               <div className="detail-list">
-                {record.prescriptions.map((prescription) => (
+                {(recordSearchTerm
+  ? recordMatches.prescriptions
+  : record.prescriptions
+).map((prescription) => (
                   <div className="detail-item" key={prescription.id}>
                     <div>
                       <strong>
@@ -640,7 +744,10 @@ async function selectPatient(selectedPatient) {
               </div>
 
               <div className="detail-list">
-                {record.observations.map((observation) => (
+                {(recordSearchTerm
+  ? recordMatches.observations
+  : record.observations
+).map((observation) => (
                   <div className="detail-item" key={observation.id}>
                     <div>
                       <strong>{observation.name}</strong>
