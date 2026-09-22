@@ -167,10 +167,10 @@ Future work includes:
 - [x] Phase 1 — Backend/database foundation
 - [x] Phase 2 — Unified clinical record
 - [x] Simulated Hospital A/B ingestion workflows
-- [ ] Phase 4 — Interoperability adapters + FHIR-compatible mapping
-- [ ] Phase 5 — Doctor dashboard
-- [ ] Phase 6 — Emergency mode
-- [ ] Phase 7 — AI clinical summary + retrieval
+- [x] Phase 4 — Interoperability adapters + FHIR-compatible mapping
+- [x] Phase 5 — Doctor dashboard
+- [x] Phase 6 — Emergency mode
+- [ ] Phase 7 — Clinical record search & retrieval
 - [ ] Phase 8 — RBAC, consent, audit trail
 - [ ] Phase 9 — Evaluation, testing, security review
 - [ ] Phase 10 — Final demo and documentation
@@ -180,3 +180,4 @@ Future work includes:
 Only synthetic patient data should be used in this repository and in demonstrations.
 
 MedBridge is intended to demonstrate healthcare interoperability concepts. It must not be used as a substitute for clinical judgment, diagnosis, treatment, prescribing, or production medical-record infrastructure.
+
