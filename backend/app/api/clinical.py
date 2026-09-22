@@ -51,6 +51,21 @@ def create_and_refresh(db, model, payload):
     db.refresh(obj)
     return obj
 
+def require_payload_hospital_access(current_user, hospital_id: int):
+    if current_user.role == "system_admin":
+        return
+
+    if current_user.role not in {"doctor", "hospital_admin"}:
+        raise HTTPException(
+            status_code=403,
+            detail="Insufficient permissions",
+        )
+
+    if current_user.hospital_id != hospital_id:
+        raise HTTPException(
+            status_code=403,
+            detail="User does not have access to this hospital",
+        )
 
 @router.post(
     "/hospitals",
@@ -82,6 +97,7 @@ def create_mapping(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    require_payload_hospital_access(current_user, payload.hospital_id)
     existing = db.scalar(
         select(PatientHospitalMapping).where(
             PatientHospitalMapping.patient_id == payload.patient_id,
