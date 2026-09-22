@@ -6,6 +6,7 @@ from app.api.deps import get_current_user
 from app.models.patient import Patient
 from app.models.hospital import Hospital
 from app.api.clinical import require_patient_hospital_access
+from app.api.deps import get_current_user, require_hospital_access
 from app.models.clinical import (
     Encounter,
     Condition,
@@ -66,7 +67,7 @@ def get_fhir_hospital(
 def get_fhir_encounter(
     encounter_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_hospital_access),
 ):
     encounter = db.get(Encounter, encounter_id)
 
