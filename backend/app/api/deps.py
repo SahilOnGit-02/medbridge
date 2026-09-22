@@ -46,3 +46,18 @@ def require_role(*allowed_roles: str):
         return current_user
 
     return role_checker
+
+def require_hospital_access(
+    hospital_id: int,
+    current_user: User = Depends(get_current_user),
+) -> User:
+    if current_user.role == "system_admin":
+        return current_user
+
+    if current_user.hospital_id != hospital_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User does not have access to this hospital",
+        )
+
+    return current_user
