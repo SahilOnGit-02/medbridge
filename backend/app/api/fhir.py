@@ -161,6 +161,12 @@ def get_fhir_observation(
     if observation is None:
         raise HTTPException(status_code=404, detail="Observation not found")
 
+    require_patient_hospital_access(
+        db,
+        current_user,
+        observation.patient_id,
+    )
+
     return observation_to_fhir(observation)
 
 @router.get("/patients/{patient_id}/bundle")
