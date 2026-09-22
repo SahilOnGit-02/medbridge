@@ -246,7 +246,7 @@ def create_allergy(
 def create_medication(
     payload: MedicationCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_role("hospital_admin", "system_admin")),
 ):
     existing = db.scalar(
         select(Medication).where(
