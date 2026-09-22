@@ -796,3 +796,121 @@ button {
     min-width: 0;
   }
 }
+
+/* Emergency Mode */
+.emergency-view {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.emergency-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.emergency-header h2 {
+  margin: 6px 0 8px;
+  font-size: 32px;
+}
+
+.emergency-exit-button {
+  padding: 10px 16px;
+  border: 1px solid #d6dce8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #182238;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.emergency-exit-button:hover {
+  background: #f4f6fa;
+}
+
+.emergency-empty {
+  padding: 40px;
+  border: 1px dashed #d6dce8;
+  border-radius: 14px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.emergency-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.emergency-patient-card {
+  padding: 22px 24px;
+  border: 1px solid #d6dce8;
+  border-radius: 14px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.emergency-patient-card span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #68748a;
+}
+
+.emergency-patient-card strong {
+  font-size: 24px;
+  color: #182238;
+}
+
+.emergency-patient-card small {
+  color: #68748a;
+}
+
+.emergency-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.emergency-card {
+  padding: 22px;
+  border: 1px solid #d6dce8;
+  border-radius: 14px;
+  background: #ffffff;
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.emergency-card-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #68748a;
+}
+
+.emergency-card strong {
+  font-size: 18px;
+  line-height: 1.5;
+  color: #182238;
+}
+
+.emergency-card.allergy-warning {
+  border: 2px solid #dc2626 !important;
+  background: #fff5f5 !important;
+}
+
+.emergency-card.allergy-warning .emergency-card-label {
+  color: #b91c1c !important;
+}
+
+.emergency-card.allergy-warning strong {
+  color: #991b1b !important;
+}

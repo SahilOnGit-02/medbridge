@@ -5,10 +5,11 @@ const API_BASE_URL = "http://localhost:8001";
 
 function App() {
   const [searchId, setSearchId] = useState("");
-  const [patient, setPatient] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [record, setRecord] = useState(null);
+const [patient, setPatient] = useState(null);
+const [loading, setLoading] = useState(false);
+const [error, setError] = useState("");
+const [record, setRecord] = useState(null);
+const [emergencyMode, setEmergencyMode] = useState(false);
 
   async function searchPatient(event) {
     event.preventDefault();
@@ -92,13 +93,167 @@ function App() {
       </aside>
 
       <main className="main-content">
-        <header className="topbar">
+{emergencyMode && (
+  <section className="emergency-view">
+    <div className="emergency-header">
+      <div>
+        <p className="section-label">EMERGENCY MODE</p>
+        <h2>Critical Patient Information</h2>
+        <p className="section-description">
+          Rapid access to essential clinical information for emergency care.
+        </p>
+      </div>
+
+      <button
+        className="emergency-exit-button"
+        onClick={() => setEmergencyMode(false)}
+      >
+        Exit Emergency Mode
+      </button>
+    </div>
+
+    {!patient || !record ? (
+      <div className="emergency-empty">
+        <strong>No patient selected</strong>
+        <span>
+          Search for a patient first, then activate Emergency Mode.
+        </span>
+      </div>
+    ) : (
+      <div className="emergency-content">
+        <div className="emergency-patient-card">
+          <span>Patient</span>
+          <strong>{patient.full_name}</strong>
+          <small>{patient.medbridge_id}</small>
+        </div>
+
+        <div className="emergency-grid">
+        <div className="emergency-card">
+            <span className="emergency-card-label">BLOOD GROUP</span>
+            <strong>{patient.blood_group || "Not recorded"}</strong>
+          </div>
+
+          <div className="emergency-card allergy-warning">
+            <span className="emergency-card-label">ALLERGIES</span>
+            <strong>
+              {record.allergies.length
+                ? record.allergies.map((allergy) => allergy.substance).join(", ")
+                : "No known allergies recorded"}
+            </strong>
+          </div>
+
+          <div className="emergency-card">
+            <span className="emergency-card-label">ACTIVE MEDICATIONS</span>
+            <strong>
+              {record.prescriptions.length
+                   ? [...new Set(
+                          record.prescriptions.map(
+                               (prescription) => prescription.medication?.name || "Medication"
+                           )
+                      )].join(", ")
+                   : "No medications recorded"}
+            </strong>
+          </div>
+
+          <div className="emergency-card">
+            <span className="emergency-card-label">RECENT CONDITIONS</span>
+            <strong>
+             {record.conditions.length
+                  ? [...new Set(
+                         record.conditions
+                            .slice(0, 3)
+                            .map((condition) => condition.name)
+                   )].join(", ")
+                : "No conditions recorded"}
+            </strong>
+          </div>
+<div className="emergency-card">
+  <span className="emergency-card-label">RECENT ENCOUNTER</span>
+  <strong>
+    {record.encounters.length
+      ? record.encounters
+          .slice()
+          .sort(
+            (a, b) =>
+              new Date(b.started_at) - new Date(a.started_at)
+          )[0].reason
+      : "No encounters recorded"}
+  </strong>
+
+  {record.encounters.length > 0 && (
+    <small>
+      {new Date(
+        record.encounters
+          .slice()
+          .sort(
+            (a, b) =>
+              new Date(b.started_at) - new Date(a.started_at)
+          )[0].started_at
+      ).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })}
+      {" • "}
+      {record.encounters
+        .slice()
+        .sort(
+          (a, b) =>
+            new Date(b.started_at) - new Date(a.started_at)
+        )[0].attending_doctor}
+    </small>
+  )}
+</div>
+   
+<div className="emergency-card">
+  <span className="emergency-card-label">LATEST OBSERVATIONS</span>
+  <strong>
+    {record.observations.length
+  ? [
+      ...new Map(
+        record.observations
+          .slice()
+          .sort(
+            (a, b) =>
+              new Date(b.observed_at) - new Date(a.observed_at)
+          )
+          .map((observation) => [
+            observation.name,
+            observation,
+          ])
+      ).values(),
+    ]
+      .slice(0, 3)
+      .map(
+        (observation) =>
+          `${observation.name}: ${observation.value} ${observation.unit || ""}`
+      )
+      .join(", ")
+  : "No observations recorded"}
+  </strong>
+</div>
+</div>
+</div>
+)}
+</section>
+)}
+
+{!emergencyMode && (
+  <>
+    <header className="topbar">
           <div>
             <div className="eyebrow">DOCTOR PORTAL</div>
             <h1>Clinical Dashboard</h1>
           </div>
 
-          <div className="doctor-profile">
+          <button
+  className="emergency-button"
+  onClick={() => setEmergencyMode(!emergencyMode)}
+>
+  {emergencyMode ? "Exit Emergency Mode" : "Emergency Mode"}
+</button>
+
+<div className="doctor-profile">
             <div className="doctor-avatar">DR</div>
             <div>
               <strong>Demo Doctor</strong>
@@ -441,8 +596,10 @@ function App() {
                 ))}
               </div>
             </article>
-          </section>
-        )}
+                </section>
+               )}
+    </>
+      )}
       </main>
     </div>
   );
