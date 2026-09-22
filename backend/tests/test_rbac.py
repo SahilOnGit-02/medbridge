@@ -71,3 +71,15 @@ def test_password_verification_rejects_wrong_password():
     hashed = hash_password("MedBridgeTest123!")
 
     assert not verify_password("WrongPassword!", hashed)
+
+from app.core.jwt import create_access_token, decode_access_token
+
+
+def test_access_token_contains_user_id_and_role():
+    token = create_access_token(123, "doctor")
+
+    payload = decode_access_token(token)
+
+    assert payload["sub"] == "123"
+    assert payload["role"] == "doctor"
+    assert "exp" in payload
