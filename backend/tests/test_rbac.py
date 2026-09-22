@@ -53,3 +53,21 @@ def test_require_hospital_access_allows_system_admin():
     result = require_hospital_access(2, user)
 
     assert result is user
+
+from app.core.security import hash_password, verify_password
+
+
+def test_password_hash_and_verify():
+    password = "MedBridgeTest123!"
+
+    hashed = hash_password(password)
+
+    assert hashed != password
+    assert hashed.startswith("$argon2")
+    assert verify_password(password, hashed)
+
+
+def test_password_verification_rejects_wrong_password():
+    hashed = hash_password("MedBridgeTest123!")
+
+    assert not verify_password("WrongPassword!", hashed)
