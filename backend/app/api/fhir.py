@@ -32,7 +32,7 @@ router = APIRouter(prefix="/fhir", tags=["fhir"])
 def get_fhir_patient(
     patient_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(require_hospital_access),
+    current_user=Depends(get_current_user),
 ):
     require_patient_hospital_access(
         db,
