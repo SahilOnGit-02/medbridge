@@ -214,6 +214,12 @@ def create_allergy(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    require_patient_hospital_access(
+        db,
+        current_user,
+        payload.patient_id,
+    )
+
     existing = db.scalar(
         select(Allergy).where(
             Allergy.patient_id == payload.patient_id,
