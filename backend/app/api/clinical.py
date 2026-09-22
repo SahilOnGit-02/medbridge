@@ -352,12 +352,6 @@ def get_unified_clinical_record(
         patient_id,
     )
 
-    require_patient_hospital_access(
-        db,
-        current_user,
-        patient_id,
-    )
-
     patient = db.get(Patient, patient_id)
 
     if patient is None:
