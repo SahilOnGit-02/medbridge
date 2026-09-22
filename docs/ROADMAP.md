@@ -5,7 +5,7 @@
 - [x] Phase 3 — Simulated Hospital A/B ingestion workflows
 - [x] Phase 4 — Interoperability adapters + FHIR-compatible mapping
 - [x] Phase 5 — Doctor dashboard
-- [ ] Phase 6 — Emergency mode
+- [x] Phase 6 — Emergency mode
 - [ ] Phase 7 — AI clinical summary + retrieval
 - [ ] Phase 8 — RBAC, consent, audit trail
 - [ ] Phase 9 — Evaluation, testing, security review
