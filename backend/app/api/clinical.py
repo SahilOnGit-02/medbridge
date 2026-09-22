@@ -312,6 +312,12 @@ def create_observation(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    require_patient_hospital_access(
+        db,
+        current_user,
+        payload.patient_id,
+    )
+
     existing = db.scalar(
         select(Observation).where(
             Observation.patient_id == payload.patient_id,
