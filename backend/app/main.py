@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.patients import router as patients_router
 from app.api.clinical import router as clinical_router
 from app.api.fhir import router as fhir_router
+from app.api.auth import router as auth_router
 
 app = FastAPI(title="MedBridge API", version="0.2.0")
 
@@ -24,3 +25,4 @@ def health():
 app.include_router(patients_router)
 app.include_router(clinical_router)
 app.include_router(fhir_router)
+app.include_router(auth_router)

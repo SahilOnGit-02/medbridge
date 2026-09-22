@@ -9,3 +9,5 @@ from app.models.clinical import (
     Prescription,
     Observation,
 )
+
+from app.models.user import User
