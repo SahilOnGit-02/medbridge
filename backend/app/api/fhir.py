@@ -5,6 +5,7 @@ from app.db.session import get_db
 from app.api.deps import get_current_user
 from app.models.patient import Patient
 from app.models.hospital import Hospital
+from app.api.clinical import require_patient_hospital_access
 from app.models.clinical import (
     Encounter,
     Condition,
@@ -33,6 +34,12 @@ def get_fhir_patient(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    require_patient_hospital_access(
+        db,
+        current_user,
+        patient_id,
+    )
+
     patient = db.get(Patient, patient_id)
 
     if patient is None:
