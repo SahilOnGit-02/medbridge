@@ -180,6 +180,12 @@ def get_fhir_patient_bundle(
     if patient is None:
         raise HTTPException(status_code=404, detail="Patient not found")
 
+    require_patient_hospital_access(
+        db,
+        current_user,
+        patient_id,
+    )
+
     entries = [
         {"resource": patient_to_fhir(patient)}
     ]
