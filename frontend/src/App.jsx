@@ -5,6 +5,7 @@ const API_BASE_URL = "http://localhost:8001";
 
 function App() {
   const [searchId, setSearchId] = useState("");
+const [searchResults, setSearchResults] = useState([]);
 const [patient, setPatient] = useState(null);
 const [loading, setLoading] = useState(false);
 const [error, setError] = useState("");
@@ -12,53 +13,84 @@ const [record, setRecord] = useState(null);
 const [emergencyMode, setEmergencyMode] = useState(false);
 
   async function searchPatient(event) {
-    event.preventDefault();
+  event.preventDefault();
 
-    const medbridgeId = searchId.trim();
+  const query = searchId.trim();
 
-    if (!medbridgeId) {
-      setError("Enter a MedBridge Patient ID.");
-      setPatient(null);
+  if (!query) {
+    setError("Enter a patient name or MedBridge Patient ID.");
+    setSearchResults([]);
+    setPatient(null);
+    setRecord(null);
+    return;
+  }
+
+  setLoading(true);
+  setError("");
+  setSearchResults([]);
+  setPatient(null);
+  setRecord(null);
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/patients/search?q=${encodeURIComponent(query)}`
+    );
+
+    if (!response.ok) {
+      throw new Error("Unable to search patients.");
+    }
+
+    const data = await response.json();
+
+    if (!data.length) {
+      setError("No matching patients found.");
       return;
     }
 
-    setLoading(true);
-    setError("");
-    setPatient(null);
-    setRecord(null);
+    setSearchResults(data);
 
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/patients/${encodeURIComponent(medbridgeId)}`
-      );
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error("Patient not found.");
-        }
-
-        throw new Error("Unable to retrieve patient.");
-      }
-
-      const data = await response.json();
-      setPatient(data);
-
-      const recordResponse = await fetch(
-        `${API_BASE_URL}/clinical/patients/${data.id}/record`
-      );
-
-      if (!recordResponse.ok) {
-        throw new Error("Patient found, but clinical record could not be loaded.");
-      }
-
-      const recordData = await recordResponse.json();
-      setRecord(recordData);
-    } catch (requestError) {
-      setError(requestError.message || "Unable to retrieve patient.");
-    } finally {
-      setLoading(false);
+    // Automatically open the patient when there is exactly one match.
+    if (data.length === 1) {
+      await selectPatient(data[0]);
     }
+  } catch (requestError) {
+    setError(requestError.message || "Unable to search patients.");
+  } finally {
+    setLoading(false);
   }
+}
+
+async function selectPatient(selectedPatient) {
+  setLoading(true);
+  setError("");
+  setPatient(null);
+  setRecord(null);
+
+  try {
+    const recordResponse = await fetch(
+      `${API_BASE_URL}/clinical/patients/${selectedPatient.id}/record`
+    );
+
+    if (!recordResponse.ok) {
+      throw new Error(
+        "Patient found, but clinical record could not be loaded."
+      );
+    }
+
+    const recordData = await recordResponse.json();
+
+    setPatient(selectedPatient);
+    setRecord(recordData);
+    setSearchResults([]);
+  } catch (requestError) {
+    setError(
+      requestError.message ||
+        "Patient found, but clinical record could not be loaded."
+    );
+  } finally {
+    setLoading(false);
+  }
+}
 
   return (
     <div className="app-shell">
@@ -273,13 +305,13 @@ const [emergencyMode, setEmergencyMode] = useState(false);
           </div>
 
           <form className="search-card" onSubmit={searchPatient}>
-            <label htmlFor="patient-search">MedBridge Patient ID</label>
+            <label htmlFor="patient-search">Search Patient</label>
 
             <div className="search-row">
               <input
                 id="patient-search"
                 type="text"
-                placeholder="e.g. MB-A-DEMO-005"
+                placeholder="Name or MedBridge ID"
                 value={searchId}
                 onChange={(event) => setSearchId(event.target.value)}
               />
@@ -294,6 +326,33 @@ const [emergencyMode, setEmergencyMode] = useState(false);
             </div>
 
             {error && <div className="search-error">{error}</div>}
+             {searchResults.length > 0 && (
+  <div className="search-results">
+    {searchResults.map((result) => (
+      <button
+        key={result.id}
+        type="button"
+        className="search-result"
+        onClick={() => selectPatient(result)}
+        disabled={loading}
+      >
+        <span className="search-result-primary">
+          <strong>{result.full_name}</strong>
+          <small>{result.medbridge_id}</small>
+        </span>
+
+        <span className="search-result-details">
+          <span>
+            DOB: {result.date_of_birth || "Not recorded"}
+          </span>
+          <span>
+            Blood group: {result.blood_group || "Not recorded"}
+          </span>
+        </span>
+      </button>
+    ))}
+  </div>
+)}
           </form>
         </section>
 
@@ -381,7 +440,7 @@ const [emergencyMode, setEmergencyMode] = useState(false);
               <div className="empty-icon">+</div>
               <strong>No patient selected</strong>
               <span>
-                Search for a MedBridge Patient ID to view the unified record.
+                Search for a patient by name or MedBridge ID to view the unified record.
               </span>
             </div>
           )}
@@ -606,3 +665,5 @@ const [emergencyMode, setEmergencyMode] = useState(false);
 }
 
 export default App;
+
+

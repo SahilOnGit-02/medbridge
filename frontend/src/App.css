@@ -480,6 +480,62 @@ button {
   cursor: wait;
 }
 
+.search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.search-result {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #e2e7ef;
+  border-radius: 10px;
+  background: #fbfcfe;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  text-align: left;
+  color: #263248;
+  cursor: pointer;
+}
+
+.search-result:hover {
+  border-color: #1769e0;
+  background: #f7faff;
+}
+
+.search-result:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.search-result-primary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.search-result-primary strong {
+  font-size: 14px;
+}
+
+.search-result-primary small {
+  color: #68748a;
+  font-size: 12px;
+}
+
+.search-result-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  color: #68748a;
+  font-size: 11px;
+}
+
 .patient-details {
   display: flex;
   flex-direction: column;
