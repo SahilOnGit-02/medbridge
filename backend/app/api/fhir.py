@@ -108,8 +108,13 @@ def get_fhir_allergy(
     if allergy is None:
         raise HTTPException(status_code=404, detail="Allergy not found")
 
-    return allergy_to_fhir(allergy)
+    require_patient_hospital_access(
+        db,
+        current_user,
+        allergy.patient_id,
+    )
 
+    return allergy_to_fhir(allergy)
 
 @router.get("/medications/{medication_id}")
 def get_fhir_medication(
