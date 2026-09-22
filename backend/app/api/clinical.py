@@ -95,7 +95,7 @@ def create_hospital(
 def create_mapping(
     payload: MappingCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(require_hospital_access),
+    current_user=Depends(get_current_user),
 ):
     require_payload_hospital_access(current_user, payload.hospital_id)
     existing = db.scalar(
@@ -127,6 +127,8 @@ def create_encounter(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    require_payload_hospital_access(current_user, payload.hospital_id)
+
     existing = db.scalar(
         select(Encounter).where(
             Encounter.patient_id == payload.patient_id,
