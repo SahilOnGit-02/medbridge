@@ -141,6 +141,12 @@ def get_fhir_prescription(
     if prescription is None:
         raise HTTPException(status_code=404, detail="Prescription not found")
 
+    require_patient_hospital_access(
+        db,
+        current_user,
+        prescription.patient_id,
+    )
+
     return prescription_to_fhir(prescription)
 
 
