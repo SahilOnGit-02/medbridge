@@ -99,6 +99,22 @@ def setup_database():
                 hospital_id=hospital_a.id,
                 is_active=True,
             ),
+        User(
+            email="admin.test@medbridge.in",
+            full_name="Test Hospital Admin",
+            password_hash=hash_password("TestHospitalAdmin123!"),
+            role="hospital_admin",
+            hospital_id=hospital_a.id,
+            is_active=True,
+        ),
+        User(
+            email="system.admin@medbridge.in",
+            full_name="Test System Admin",
+            password_hash=hash_password("TestSystemAdmin123!"),
+            role="system_admin",
+            hospital_id=None,
+            is_active=True,
+        ),
         ]
     )
 
@@ -178,3 +194,101 @@ def test_hospital_doctor_search_cannot_find_other_hospital_patient():
 
     assert response.status_code == 200
     assert response.json() == []
+
+def test_doctor_cannot_create_hospital():
+    token = login_as_hospital_a_doctor()
+
+    response = client.post(
+        "/clinical/hospitals",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "code": "TEST-C",
+            "name": "Unauthorized Hospital",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Insufficient permissions"
+
+def test_hospital_admin_can_create_hospital():
+    response = client.post(
+        "/auth/login",
+        json={
+            "email": "admin.test@medbridge.in",
+            "password": "TestHospitalAdmin123!",
+        },
+    )
+
+    assert response.status_code == 200
+
+    token = response.json()["access_token"]
+
+    response = client.post(
+        "/clinical/hospitals",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "code": "TEST-C",
+            "name": "Hospital Admin Test Hospital",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["code"] == "TEST-C"
+    assert response.json()["name"] == "Hospital Admin Test Hospital"
+
+def test_system_admin_can_create_hospital():
+    response = client.post(
+        "/auth/login",
+        json={
+            "email": "system.admin@medbridge.in",
+            "password": "TestSystemAdmin123!",
+        },
+    )
+
+    assert response.status_code == 200
+
+    token = response.json()["access_token"]
+
+    response = client.post(
+        "/clinical/hospitals",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "code": "TEST-D",
+            "name": "System Admin Test Hospital",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["code"] == "TEST-D"
+    assert response.json()["name"] == "System Admin Test Hospital"
+
+def test_doctor_cannot_create_condition_for_other_hospital_patient():
+    token = login_as_hospital_a_doctor()
+
+    response = client.post(
+        "/clinical/conditions",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "patient_id": 2,
+            "name": "Unauthorized Test Condition",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "User does not have access to this patient"
+
+def test_doctor_can_create_condition_for_own_hospital_patient():
+    token = login_as_hospital_a_doctor()
+
+    response = client.post(
+        "/clinical/conditions",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "patient_id": 1,
+            "name": "Authorized Test Condition",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["patient_id"] == 1
+    assert response.json()["name"] == "Authorized Test Condition"
