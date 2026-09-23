@@ -149,8 +149,8 @@ MedBridge is a capstone proof of concept and is not currently suitable for real 
 
 Current limitations and future production work include:
 
-- Consent management is not yet implemented.
-- Comprehensive audit trails are not yet implemented.
+- Consent management is implemented as a prototype consent-record layer; it does not yet gate all clinical/FHIR access.
+- Audit logging is implemented for key authenticated access events; comprehensive production-grade audit coverage is still required.
 - Production-grade encryption and secret-management practices are still required.
 - Formal security testing and penetration testing are still required.
 - Production infrastructure, monitoring, backups, and reliability controls are still required.
@@ -169,7 +169,7 @@ Current limitations and future production work include:
 - [x] Phase 6 — Emergency mode
 - [x] Phase 7 — Clinical record search & retrieval
 - [x] Phase 8 — Authentication + hospital-scoped RBAC
-- [ ] Phase 9 — Consent management + comprehensive audit trail
+- [x] Phase 9 — Consent management + audit trail
 - [ ] Phase 10 — Evaluation, formal security review, final demo and documentation
 
 ## Safety and Data Policy
