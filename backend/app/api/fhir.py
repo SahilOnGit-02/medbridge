@@ -78,12 +78,18 @@ def get_fhir_hospital(
 def get_fhir_encounter(
     encounter_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(require_hospital_access),
+    current_user=Depends(get_current_user),
 ):
     encounter = db.get(Encounter, encounter_id)
 
     if encounter is None:
         raise HTTPException(status_code=404, detail="Encounter not found")
+
+    if current_user.role != "system_admin" and current_user.hospital_id != encounter.hospital_id:
+        raise HTTPException(
+            status_code=403,
+            detail="User does not have access to this hospital",
+        )
 
     return encounter_to_fhir(encounter)
 
