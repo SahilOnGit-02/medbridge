@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.clinical import require_patient_hospital_access
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.consent import PatientHospitalConsent
@@ -78,14 +79,13 @@ def list_patient_consents(
     if patient is None:
         raise HTTPException(status_code=404, detail="Patient not found")
 
+    require_patient_hospital_access(db, current_user, patient_id)
+
     query = select(PatientHospitalConsent).where(
         PatientHospitalConsent.patient_id == patient_id
     )
 
     if current_user.role != "system_admin":
-        if current_user.role not in {"doctor", "hospital_admin"}:
-            raise HTTPException(status_code=403, detail="Insufficient permissions")
-
         query = query.where(
             PatientHospitalConsent.hospital_id == current_user.hospital_id
         )
