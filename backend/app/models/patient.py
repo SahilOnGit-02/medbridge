@@ -5,6 +5,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
 
+
 class Patient(Base):
     __tablename__ = "patients"
 
@@ -16,20 +17,37 @@ class Patient(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     hospital_mappings = relationship(
-        "PatientHospitalMapping", back_populates="patient", cascade="all, delete-orphan"
+        "PatientHospitalMapping",
+        back_populates="patient",
+        cascade="all, delete-orphan",
     )
     encounters = relationship(
-        "Encounter", back_populates="patient", cascade="all, delete-orphan"
+        "Encounter",
+        back_populates="patient",
+        cascade="all, delete-orphan",
     )
     conditions = relationship(
-        "Condition", back_populates="patient", cascade="all, delete-orphan"
+        "Condition",
+        back_populates="patient",
+        cascade="all, delete-orphan",
     )
     allergies = relationship(
-        "Allergy", back_populates="patient", cascade="all, delete-orphan"
+        "Allergy",
+        back_populates="patient",
+        cascade="all, delete-orphan",
     )
     prescriptions = relationship(
-        "Prescription", back_populates="patient", cascade="all, delete-orphan"
+        "Prescription",
+        back_populates="patient",
+        cascade="all, delete-orphan",
     )
     observations = relationship(
-        "Observation", back_populates="patient", cascade="all, delete-orphan"
+        "Observation",
+        back_populates="patient",
+        cascade="all, delete-orphan",
+    )
+    consents = relationship(
+        "PatientHospitalConsent",
+        back_populates="patient",
+        cascade="all, delete-orphan",
     )

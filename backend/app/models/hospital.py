@@ -28,3 +28,8 @@ class Hospital(Base):
         "User",
         back_populates="hospital",
     )
+    consents = relationship(
+        "PatientHospitalConsent",
+        back_populates="hospital",
+        cascade="all, delete-orphan",
+    )
