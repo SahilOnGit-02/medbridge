@@ -9,7 +9,7 @@ from app.api.deps import get_db
 from app.core.security import hash_password
 from app.db.session import Base
 from app.main import app
-from app.models.clinical import PatientHospitalMapping
+from app.models.clinical import Medication, PatientHospitalMapping
 from app.models.hospital import Hospital
 from app.models.patient import Patient
 from app.models.user import User
@@ -77,6 +77,16 @@ def setup_database():
     db.add_all([patient_a, patient_b])
     db.flush()
 
+    medication = Medication(
+        name="Test Amoxicillin",
+        generic_name="Amoxicillin",
+        form="capsule",
+        strength="500 mg",
+    )
+
+    db.add(medication)
+    db.flush()
+
     db.add_all(
         [
             PatientHospitalMapping(
@@ -99,22 +109,22 @@ def setup_database():
                 hospital_id=hospital_a.id,
                 is_active=True,
             ),
-        User(
-            email="admin.test@medbridge.in",
-            full_name="Test Hospital Admin",
-            password_hash=hash_password("TestHospitalAdmin123!"),
-            role="hospital_admin",
-            hospital_id=hospital_a.id,
-            is_active=True,
-        ),
-        User(
-            email="system.admin@medbridge.in",
-            full_name="Test System Admin",
-            password_hash=hash_password("TestSystemAdmin123!"),
-            role="system_admin",
-            hospital_id=None,
-            is_active=True,
-        ),
+            User(
+                email="admin.test@medbridge.in",
+                full_name="Test Hospital Admin",
+                password_hash=hash_password("TestHospitalAdmin123!"),
+                role="hospital_admin",
+                hospital_id=hospital_a.id,
+                is_active=True,
+            ),
+            User(
+                email="system.admin@medbridge.in",
+                full_name="Test System Admin",
+                password_hash=hash_password("TestSystemAdmin123!"),
+                role="system_admin",
+                hospital_id=None,
+                is_active=True,
+            ),
         ]
     )
 
@@ -292,3 +302,83 @@ def test_doctor_can_create_condition_for_own_hospital_patient():
     assert response.status_code == 201
     assert response.json()["patient_id"] == 1
     assert response.json()["name"] == "Authorized Test Condition"
+
+def test_doctor_cannot_create_allergy_for_other_hospital_patient():
+    token = login_as_hospital_a_doctor()
+
+    response = client.post(
+        "/clinical/allergies",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "patient_id": 2,
+            "substance": "Unauthorized Test Allergy",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "User does not have access to this patient"
+
+def test_doctor_can_create_allergy_for_own_hospital_patient():
+    token = login_as_hospital_a_doctor()
+
+    response = client.post(
+        "/clinical/allergies",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "patient_id": 1,
+            "substance": "Authorized Test Allergy",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["patient_id"] == 1
+    assert response.json()["substance"] == "Authorized Test Allergy"
+
+def test_hospital_doctor_cannot_create_prescription_for_other_hospital_patient():
+    token = login_as_hospital_a_doctor()
+
+    db = TestingSessionLocal()
+    medication = db.query(Medication).filter_by(name="Test Amoxicillin").first()
+    db.close()
+
+    response = client.post(
+        "/clinical/prescriptions",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "patient_id": 2,
+            "medication_id": medication.id,
+            "dose": "500 mg",
+            "frequency": "twice daily",
+            "route": "oral",
+            "status": "active",
+            "instructions": "Test prescription",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "User does not have access to this patient"
+
+def test_hospital_doctor_can_create_prescription_for_own_hospital_patient():
+    token = login_as_hospital_a_doctor()
+
+    db = TestingSessionLocal()
+    medication = db.query(Medication).filter_by(name="Test Amoxicillin").first()
+    db.close()
+
+    response = client.post(
+        "/clinical/prescriptions",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "patient_id": 1,
+            "medication_id": medication.id,
+            "dose": "500 mg",
+            "frequency": "twice daily",
+            "route": "oral",
+            "status": "active",
+            "instructions": "Test prescription",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["patient_id"] == 1
+    assert response.json()["medication_id"] == medication.id
