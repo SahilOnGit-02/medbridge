@@ -12,6 +12,7 @@ function App() {
   const [error, setError] = useState("");
   const [record, setRecord] = useState(null);
   const [emergencyMode, setEmergencyMode] = useState(false);
+  const [activeView, setActiveView] = useState("dashboard");
 
   const [accessToken, setAccessToken] = useState(
     () => localStorage.getItem("medbridge_access_token") || ""
@@ -180,13 +181,50 @@ function App() {
 
       const recordData = await recordResponse.json();
 
-      setPatient(selectedPatient);
-      setRecord(recordData);
-      setSearchResults([]);
+  setPatient(selectedPatient);
+  setRecord(recordData);
+  setSearchResults([]);
+  setActiveView("dashboard");
     } catch (requestError) {
       setError(
         requestError.message ||
           "Patient found, but clinical record could not be loaded."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+
+  async function loadPatients() {
+    if (!accessToken) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await fetch(`${API_BASE_URL}/patients`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (response.status === 401) {
+        logoutDoctor();
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error("Unable to load patients.");
+      }
+
+      const data = await response.json();
+      setSearchResults(data);
+    } catch (requestError) {
+      setError(
+        requestError.message || "Unable to load patients."
       );
     } finally {
       setLoading(false);
@@ -378,15 +416,24 @@ function App() {
         </div>
 
         <nav className="sidebar-nav">
-          <button className="nav-item active">
-            <span>D</span>
-            Dashboard
-          </button>
+          <button
+  className={`nav-item ${activeView === "dashboard" ? "active" : ""}`}
+  onClick={() => setActiveView("dashboard")}
+>
+  <span>D</span>
+  Dashboard
+</button>
 
-          <button className="nav-item">
-            <span>P</span>
-            Patients
-          </button>
+          <button
+  className={`nav-item ${activeView === "patients" ? "active" : ""}`}
+  onClick={async () => {
+  setActiveView("patients");
+  await loadPatients();
+}}
+>
+  <span>P</span>
+  Patients
+</button>
         </nav>
 
         <div className="sidebar-footer">
@@ -402,7 +449,78 @@ function App() {
       </aside>
 
       <main className="main-content">
-        {emergencyMode && (
+{activeView === "patients" ? (
+  <section className="patients-directory">
+    <div className="page-header">
+      <div>
+        <div className="eyebrow">PATIENT DIRECTORY</div>
+        <h1>Patients</h1>
+        <p>
+          Patients available to you through your hospital access.
+        </p>
+      </div>
+
+      <div className="directory-count">
+        {searchResults.length} patients
+      </div>
+    </div>
+
+    {loading && (
+      <div className="dashboard-card">
+        <p>Loading patients...</p>
+      </div>
+    )}
+
+    {!loading && error && (
+      <div className="dashboard-card">
+        <p className="error-message">{error}</p>
+      </div>
+    )}
+
+    {!loading && !error && (
+      <section className="patients-grid">
+        {searchResults.map((listedPatient) => (
+          <button
+            className="patient-directory-card"
+            key={listedPatient.id}
+            onClick={() => selectPatient(listedPatient)}
+          >
+            <div className="patient-avatar">
+              {listedPatient.full_name
+                .split(" ")
+                .map((name) => name[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase()}
+            </div>
+
+            <div className="patient-directory-info">
+              <h3>{listedPatient.full_name}</h3>
+
+              <span>
+                {listedPatient.medbridge_id}
+              </span>
+
+              <div className="patient-directory-meta">
+                <span>
+                  DOB:{" "}
+                  {listedPatient.date_of_birth || "Not recorded"}
+                </span>
+
+                <span>
+                  Blood group:{" "}
+                  {listedPatient.blood_group || "Not recorded"}
+                </span>
+              </div>
+            </div>
+          </button>
+        ))}
+      </section>
+    )}
+  </section>
+) : (
+  <>
+    {emergencyMode && (
           <section className="emergency-view">
             <div className="emergency-header">
               <div>
@@ -1329,7 +1447,9 @@ function App() {
             )}
           </>
         )}
-      </main>
+      </>
+    )}
+    </main>
     </div>
   );
 }

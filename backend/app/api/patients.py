@@ -13,6 +13,30 @@ from app.schemas.patient import PatientCreate, PatientRead, PatientSearchResult
 
 router = APIRouter(prefix="/patients", tags=["patients"])
 
+@router.get("", response_model=list[PatientSearchResult])
+def list_patients(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    query = select(Patient)
+
+    if current_user.role != "system_admin":
+        if current_user.role not in {"doctor", "hospital_admin"}:
+            raise HTTPException(
+                status_code=403,
+                detail="Insufficient permissions",
+            )
+
+        query = query.join(
+            PatientHospitalMapping,
+            PatientHospitalMapping.patient_id == Patient.id,
+        ).where(
+            PatientHospitalMapping.hospital_id == current_user.hospital_id
+        )
+
+    query = query.order_by(Patient.full_name.asc())
+
+    return db.scalars(query).unique().all()
 
 @router.post("", response_model=PatientRead, status_code=201)
 def create_patient(
