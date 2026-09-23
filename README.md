@@ -145,22 +145,19 @@ All demonstration records are synthetic.
 
 ## Current Limitations
 
-MedBridge is a proof of concept and is not currently suitable for real hospital deployment.
+MedBridge is a capstone proof of concept and is not currently suitable for real hospital deployment.
 
-Future work includes:
+Current limitations and future production work include:
 
-- Production authentication and authorization
-- Role-based access control
-- Consent management
-- Comprehensive audit trails
-- Encryption and secure secret management
-- Formal security testing
-- Production infrastructure
-- Hospital-specific integration agreements and adapters
-- FHIR-compatible interoperability
-- ABDM-aligned integration
-- Clinical governance and validation
-- Production monitoring and reliability controls
+- Consent management is not yet implemented.
+- Comprehensive audit trails are not yet implemented.
+- Production-grade encryption and secret-management practices are still required.
+- Formal security testing and penetration testing are still required.
+- Production infrastructure, monitoring, backups, and reliability controls are still required.
+- Hospital-specific production integration agreements and adapters are not implemented.
+- ABDM-aligned production integration is not implemented.
+- Clinical governance and formal clinical validation are outside the current prototype scope.
+- The current authentication and RBAC implementation is intended for the capstone prototype and requires further hardening before production use.
 
 ## Roadmap
 
@@ -170,10 +167,10 @@ Future work includes:
 - [x] Phase 4 — Interoperability adapters + FHIR-compatible mapping
 - [x] Phase 5 — Doctor dashboard
 - [x] Phase 6 — Emergency mode
-- [ ] Phase 7 — Clinical record search & retrieval
-- [ ] Phase 8 — RBAC, consent, audit trail
-- [ ] Phase 9 — Evaluation, testing, security review
-- [ ] Phase 10 — Final demo and documentation
+- [x] Phase 7 — Clinical record search & retrieval
+- [x] Phase 8 — Authentication + hospital-scoped RBAC
+- [ ] Phase 9 — Consent management + comprehensive audit trail
+- [ ] Phase 10 — Evaluation, formal security review, final demo and documentation
 
 ## Safety and Data Policy
 
