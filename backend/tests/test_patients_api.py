@@ -151,3 +151,30 @@ def test_hospital_doctor_cannot_retrieve_patient_from_other_hospital():
 
     assert response.status_code == 403
     assert response.json()["detail"] == "User does not have access to this patient"
+
+def test_hospital_doctor_search_returns_only_own_hospital_patient():
+    token = login_as_hospital_a_doctor()
+
+    response = client.get(
+        "/patients/search?q=Test%20Patient",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+
+    results = response.json()
+
+    assert len(results) == 1
+    assert results[0]["medbridge_id"] == "MB-TEST-A-001"
+
+
+def test_hospital_doctor_search_cannot_find_other_hospital_patient():
+    token = login_as_hospital_a_doctor()
+
+    response = client.get(
+        "/patients/search?q=Test%20Patient%20B",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == []
