@@ -383,3 +383,24 @@ def test_hospital_doctor_can_create_prescription_for_own_hospital_patient():
     assert response.status_code == 201
     assert response.json()["patient_id"] == 1
     assert response.json()["medication_id"] == medication.id
+
+def test_system_admin_can_retrieve_patient_from_any_hospital():
+    response = client.post(
+        "/auth/login",
+        json={
+            "email": "system.admin@medbridge.in",
+            "password": "TestSystemAdmin123!",
+        },
+    )
+
+    assert response.status_code == 200
+
+    token = response.json()["access_token"]
+
+    response = client.get(
+        "/patients/MB-TEST-B-001",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["medbridge_id"] == "MB-TEST-B-001"
