@@ -39,6 +39,11 @@ def create_consent(
                 status_code=403,
                 detail="User does not have access to this hospital",
             )
+    require_patient_hospital_access(
+        db,
+        current_user,
+        payload.patient_id,
+    )
 
     if payload.status not in {"active", "revoked", "expired"}:
         raise HTTPException(

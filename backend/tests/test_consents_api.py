@@ -188,6 +188,24 @@ def test_hospital_doctor_cannot_create_consent_for_other_hospital():
     assert response.status_code == 403
 
 
+def test_hospital_doctor_cannot_create_consent_for_unmapped_patient():
+    token = login_as_hospital_a_doctor()
+
+    response = client.post(
+        "/consents",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "patient_id": 2,
+            "hospital_id": 1,
+            "purpose": "Patient not mapped to Hospital A",
+            "granted_at": "2026-09-23T10:00:00",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "User does not have access to this patient"
+
+
 def test_hospital_doctor_can_list_own_patient_consents():
     token = login_as_hospital_a_doctor()
 
