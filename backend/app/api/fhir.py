@@ -64,7 +64,7 @@ def get_fhir_patient(
 def get_fhir_hospital(
     hospital_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_hospital_access),
 ):
     hospital = db.get(Hospital, hospital_id)
 
