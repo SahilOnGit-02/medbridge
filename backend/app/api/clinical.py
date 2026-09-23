@@ -6,6 +6,7 @@ from app.db.session import get_db
 from app.api.deps import get_current_user, require_role, require_hospital_access
 from app.models.hospital import Hospital
 from app.models.patient import Patient
+from app.core.audit import log_audit_event
 from app.models.clinical import (
     PatientHospitalMapping,
     Encounter,
@@ -359,6 +360,17 @@ def get_unified_clinical_record(
             status_code=404,
             detail="Patient not found",
         )
+    log_audit_event(
+        db,
+        current_user=current_user,
+        action="patient_record_view",
+        resource_type="clinical_record",
+        resource_id=patient_id,
+        patient_id=patient_id,
+        success=True,
+    )
+
+    db.commit()
 
     prescriptions = [
         UnifiedPrescriptionRead(

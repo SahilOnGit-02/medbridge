@@ -2,6 +2,7 @@
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.core.audit import log_audit_event
 from app.models.patient import Patient
 from app.models.hospital import Hospital
 from app.api.clinical import require_patient_hospital_access
@@ -44,6 +45,17 @@ def get_fhir_patient(
 
     if patient is None:
         raise HTTPException(status_code=404, detail="Patient not found")
+
+    log_audit_event(
+        db,
+        current_user=current_user,
+        action="fhir_patient_view",
+        resource_type="fhir_patient",
+        resource_id=patient_id,
+        patient_id=patient_id,
+        success=True,
+    )
+    db.commit()
 
     return patient_to_fhir(patient)
 
