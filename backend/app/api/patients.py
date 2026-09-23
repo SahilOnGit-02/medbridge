@@ -4,8 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from app.api.clinical import require_patient_hospital_access
 from app.api.deps import get_current_user
 from app.db.session import get_db
+from app.models.clinical import PatientHospitalMapping
 from app.models.patient import Patient
 from app.schemas.patient import PatientCreate, PatientRead, PatientSearchResult
 
@@ -43,6 +45,7 @@ def search_patients(
     current_user=Depends(get_current_user),
 ):
     query = select(Patient)
+
     filters = []
 
     if q:
@@ -65,9 +68,23 @@ def search_patients(
             detail="Provide a search query or date_of_birth",
         )
 
+    if current_user.role != "system_admin":
+        if current_user.role not in {"doctor", "hospital_admin"}:
+            raise HTTPException(
+                status_code=403,
+                detail="Insufficient permissions",
+            )
+
+        query = query.join(
+            PatientHospitalMapping,
+            PatientHospitalMapping.patient_id == Patient.id,
+        ).where(
+            PatientHospitalMapping.hospital_id == current_user.hospital_id
+        )
+
     query = query.order_by(Patient.full_name.asc())
 
-    return db.scalars(query).all()
+    return db.scalars(query).unique().all()
 
 
 @router.get("/{medbridge_id}", response_model=PatientRead)
@@ -82,5 +99,11 @@ def get_patient(
 
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
+
+    require_patient_hospital_access(
+        db,
+        current_user,
+        patient.id,
+    )
 
     return patient

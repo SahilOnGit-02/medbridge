@@ -6,3 +6,6 @@ pydantic-settings==2.9.1
 alembic==1.19.2
 pytest==8.3.5
 httpx==0.28.1
+PyJWT
+pwdlib[argon2]
+email-validator
