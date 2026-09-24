@@ -3,13 +3,20 @@ from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
+from datetime import date, datetime, timezone
 
 from app.api.clinical import require_patient_hospital_access
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.clinical import PatientHospitalMapping
 from app.models.patient import Patient
-from app.schemas.patient import PatientCreate, PatientRead, PatientSearchResult
+from app.core.audit import log_audit_event
+from app.schemas.patient import (
+    PatientCreate,
+    PatientProfileUpdate,
+    PatientRead,
+    PatientSearchResult,
+)
 
 router = APIRouter(prefix="/patients", tags=["patients"])
 
@@ -129,5 +136,111 @@ def get_patient(
         current_user,
         patient.id,
     )
+
+    return patient
+
+from app.schemas.patient import (
+    PatientCreate,
+    PatientProfileUpdate,
+    PatientRead,
+    PatientSearchResult,
+)
+
+@router.patch("/{medbridge_id}/profile", response_model=PatientRead)
+def update_patient_profile(
+    medbridge_id: str,
+    payload: PatientProfileUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    patient = db.scalar(
+        select(Patient).where(Patient.medbridge_id == medbridge_id)
+    )
+
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    require_patient_hospital_access(
+        db,
+        current_user,
+        patient.id,
+    )
+
+    update_data = payload.model_dump(exclude_unset=True)
+
+    for field, value in update_data.items():
+        setattr(patient, field, value)
+
+    db.commit()
+    db.refresh(patient)
+
+    return patient
+
+@router.patch("/{medbridge_id}/profile", response_model=PatientRead)
+def update_patient_profile(
+    medbridge_id: str,
+    payload: PatientProfileUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    patient = db.scalar(
+        select(Patient).where(Patient.medbridge_id == medbridge_id)
+    )
+
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    require_patient_hospital_access(
+        db,
+        current_user,
+        patient.id,
+    )
+
+    update_data = payload.model_dump(exclude_unset=True)
+
+    for field, value in update_data.items():
+        setattr(patient, field, value)
+
+    db.commit()
+    db.refresh(patient)
+
+    return patient
+
+@router.post("/{medbridge_id}/verify", response_model=PatientRead)
+def verify_patient_identity(
+    medbridge_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    patient = db.scalar(
+        select(Patient).where(Patient.medbridge_id == medbridge_id)
+    )
+
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    require_patient_hospital_access(
+        db,
+        current_user,
+        patient.id,
+    )
+
+    patient.identity_verification_status = "verified"
+    patient.identity_verified_at = datetime.now(timezone.utc)
+    patient.identity_verified_by = current_user.id
+
+    log_audit_event(
+        db,
+        current_user=current_user,
+        action="patient_identity_verified",
+        resource_type="patient_identity",
+        resource_id=patient.id,
+        patient_id=patient.id,
+        success=True,
+        details="Patient identity verified by authorized hospital user.",
+    )
+
+    db.commit()
+    db.refresh(patient)
 
     return patient

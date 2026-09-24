@@ -554,15 +554,69 @@ function App() {
                 </span>
               </div>
             ) : (
-              <div className="emergency-content">
-                <div className="emergency-patient-card">
-                  <span>Patient</span>
+  <div className="emergency-content">
+    <div className="emergency-patient-card">
+  <div className="emergency-patient-identity">
+    <div
+      className={`emergency-patient-avatar ${
+        patient.profile_photo_url ? "has-photo" : ""
+      }`}
+    >
+      {patient.profile_photo_url ? (
+        <img
+          src={patient.profile_photo_url}
+          alt={`${patient.full_name} profile`}
+        />
+      ) : (
+        patient.full_name
+          .split(" ")
+          .map((name) => name[0])
+          .slice(0, 2)
+          .join("")
+          .toUpperCase()
+      )}
+    </div>
 
-                  <strong>{patient.full_name}</strong>
+    <div className="emergency-patient-name">
+      <span>Patient</span>
+      <strong>{patient.full_name}</strong>
+      <small>{patient.medbridge_id}</small>
+    </div>
+  </div>
 
-                  <small>{patient.medbridge_id}</small>
-                </div>
+  <div className="emergency-patient-meta">
+    <div>
+      <span>Date of birth</span>
+      <strong>{patient.date_of_birth || "Not recorded"}</strong>
+    </div>
 
+    <div>
+      <span>Age</span>
+      <strong>
+        {patient.date_of_birth
+          ? Math.floor(
+              (new Date() - new Date(patient.date_of_birth)) /
+                (365.25 * 24 * 60 * 60 * 1000)
+            )
+          : "Not recorded"}
+      </strong>
+    </div>
+
+    <div>
+      <span>Blood group</span>
+      <strong>{patient.blood_group || "Not recorded"}</strong>
+    </div>
+
+    <div>
+      <span>Identity</span>
+      <strong>
+        {patient.identity_verification_status === "verified"
+          ? "Verified"
+          : "Not verified"}
+      </strong>
+    </div>
+  </div>
+</div>
                 <div className="emergency-grid">
                   <div className="emergency-card">
                     <span className="emergency-card-label">
@@ -902,15 +956,45 @@ function App() {
                   <div className="patient-details">
                     <div className="patient-content">
                       <div className="patient-primary">
-                        <div className="patient-avatar">
-                          {patient.full_name
-                            .split(" ")
-                            .map((name) => name[0])
-                            .slice(0, 2)
-                            .join("")
-                            .toUpperCase()}
-                        </div>
+                        <div className={`patient-avatar ${patient.profile_photo_url ? "has-photo" : ""}`}>
+  {patient.profile_photo_url ? (
+    <img
+      src={patient.profile_photo_url}
+      alt={`${patient.full_name} profile`}
+    />
+  ) : (
+    patient.full_name
+      .split(" ")
+      .map((name) => name[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase()
+  )}
+</div>
+<div>
+  <span>Internal ID</span>
+  <strong>#{patient.id}</strong>
+</div>
 
+<div className="identity-verification">
+  <div>
+    <span>Identity verification</span>
+    <strong>
+      {patient.identity_verification_status === "verified"
+        ? "Verified"
+        : "Not verified"}
+    </strong>
+  </div>
+
+  {patient.identity_verified_at && (
+    <div>
+      <span>Verified at</span>
+      <strong>
+        {new Date(patient.identity_verified_at).toLocaleString()}
+      </strong>
+    </div>
+  )}
+</div>
                         <div>
                           <strong>
                             {patient.full_name}
@@ -923,33 +1007,68 @@ function App() {
                       </div>
 
                       <div className="patient-fields">
-                        <div>
-                          <span>Date of birth</span>
+  <div>
+    <span>Date of birth</span>
+    <strong>{patient.date_of_birth || "Not recorded"}</strong>
+  </div>
 
-                          <strong>
-                            {patient.date_of_birth ||
-                              "Not recorded"}
-                          </strong>
-                        </div>
+  <div>
+    <span>Age</span>
+    <strong>
+      {patient.date_of_birth
+        ? Math.floor(
+            (new Date() - new Date(patient.date_of_birth)) /
+              (365.25 * 24 * 60 * 60 * 1000)
+          )
+        : "Not recorded"}
+    </strong>
+  </div>
 
-                        <div>
-                          <span>Blood group</span>
+  <div>
+    <span>Gender</span>
+    <strong>{patient.gender || "Not recorded"}</strong>
+  </div>
 
-                          <strong>
-                            {patient.blood_group ||
-                              "Not recorded"}
-                          </strong>
-                        </div>
+  <div>
+    <span>Blood group</span>
+    <strong>{patient.blood_group || "Not recorded"}</strong>
+  </div>
 
-                        <div>
-                          <span>Internal ID</span>
+  <div>
+    <span>Phone</span>
+    <strong>{patient.phone || "Not recorded"}</strong>
+  </div>
 
-                          <strong>
-                            #{patient.id}
-                          </strong>
-                        </div>
+  <div>
+    <span>Email</span>
+    <strong>{patient.email || "Not recorded"}</strong>
+  </div>
+
+  <div>
+    <span>Address</span>
+    <strong>{patient.address || "Not recorded"}</strong>
+  </div>
+
+  <div>
+    <span>Emergency contact</span>
+    <strong>
+      {patient.emergency_contact_name
+        ? `${patient.emergency_contact_name}${
+            patient.emergency_contact_phone
+              ? ` · ${patient.emergency_contact_phone}`
+              : ""
+          }`
+        : "Not recorded"}
+    </strong>
+  </div>
+
+  <div>
+    <span>Internal ID</span>
+    <strong>#{patient.id}</strong>
+  </div>
+</div>
+
                       </div>
-                    </div>
 
                     <div className="identity-section">
                       <div className="identity-header">
