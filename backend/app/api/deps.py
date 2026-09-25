@@ -35,6 +35,19 @@ def get_current_user(
 
     return user
 
+def get_current_patient(
+    current_user: User = Depends(get_current_user),
+):
+    patient = current_user.patient
+
+    if patient is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Authenticated user is not linked to a patient account",
+        )
+
+    return patient
+
 def require_role(*allowed_roles: str):
     def role_checker(current_user: User = Depends(get_current_user)) -> User:
         if current_user.role not in allowed_roles:

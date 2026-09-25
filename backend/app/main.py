@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.patients import router as patients_router
@@ -9,7 +10,7 @@ from app.api.consents import router as consents_router
 
 
 app = FastAPI(title="MedBridge API", version="0.2.0")
-
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 app.add_middleware(
     CORSMiddleware,

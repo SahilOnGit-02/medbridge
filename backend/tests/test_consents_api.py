@@ -294,3 +294,162 @@ def test_hospital_doctor_can_revoke_own_hospital_consent():
     assert response.status_code == 200
     assert response.json()["status"] == "revoked"
     assert response.json()["revoked_at"] is not None
+
+def test_hospital_doctor_cannot_create_consent_with_invalid_status():
+    token = login_as_hospital_a_doctor()
+
+    response = client.post(
+        "/consents",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "patient_id": 1,
+            "hospital_id": 1,
+            "status": "invalid",
+            "purpose": "Invalid status test",
+            "granted_at": "2026-09-23T10:00:00",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Invalid consent status"
+
+def test_hospital_doctor_cannot_revoke_already_revoked_consent():
+    token = login_as_hospital_a_doctor()
+
+    db = TestingSessionLocal()
+    consent = PatientHospitalConsent(
+        patient_id=1,
+        hospital_id=1,
+        status="revoked",
+        purpose="Already revoked consent",
+        granted_at=datetime(2026, 9, 23, 10, 0, 0),
+        revoked_at=datetime(2026, 9, 23, 11, 0, 0),
+    )
+    db.add(consent)
+    db.commit()
+    consent_id = consent.id
+    db.close()
+
+    response = client.post(
+        f"/consents/{consent_id}/revoke",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Consent is already revoked"
+
+def login_as_patient():
+    db = TestingSessionLocal()
+
+    patient = db.query(Patient).filter_by(
+        medbridge_id="MB-TEST-A-001"
+    ).first()
+
+    patient_user = User(
+        email="patient.test@medbridge.in",
+        full_name="Test Patient A",
+        password_hash=hash_password("TestPatientA123!"),
+        role="patient",
+        hospital_id=None,
+        is_active=True,
+    )
+
+    db.add(patient_user)
+    db.flush()
+
+    patient.user_id = patient_user.id
+
+    db.commit()
+    db.close()
+
+    response = client.post(
+        "/auth/login",
+        json={
+            "email": "patient.test@medbridge.in",
+            "password": "TestPatientA123!",
+        },
+    )
+
+    assert response.status_code == 200
+
+    return response.json()["access_token"]
+
+def test_patient_can_list_own_consents():
+    token = login_as_patient()
+
+    db = TestingSessionLocal()
+    db.add(
+        PatientHospitalConsent(
+            patient_id=1,
+            hospital_id=1,
+            status="active",
+            purpose="Continuity of care",
+            granted_at=datetime(2026, 9, 25, 10, 0, 0),
+        )
+    )
+    db.commit()
+    db.close()
+
+    response = client.get(
+        "/consents/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+    assert response.json()[0]["patient_id"] == 1
+    assert response.json()[0]["hospital_id"] == 1
+    assert response.json()[0]["status"] == "active"
+
+
+def test_patient_can_create_consent_for_mapped_hospital():
+    token = login_as_patient()
+
+    response = client.post(
+        "/consents/me",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "hospital_id": 1,
+            "purpose": "Continuity of care",
+        },
+    )
+
+    assert response.status_code == 201
+
+    data = response.json()
+
+    assert data["patient_id"] == 1
+    assert data["hospital_id"] == 1
+    assert data["status"] == "active"
+    assert data["purpose"] == "Continuity of care"
+
+
+def test_patient_can_revoke_own_consent():
+    token = login_as_patient()
+
+    db = TestingSessionLocal()
+    consent = PatientHospitalConsent(
+        patient_id=1,
+        hospital_id=1,
+        status="active",
+        purpose="Continuity of care",
+        granted_at=datetime(2026, 9, 25, 10, 0, 0),
+    )
+    db.add(consent)
+    db.commit()
+    consent_id = consent.id
+    db.close()
+
+    response = client.post(
+        f"/consents/me/{consent_id}/revoke",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["patient_id"] == 1
+    assert data["hospital_id"] == 1
+    assert data["status"] == "revoked"
+    assert data["revoked_at"] is not None

@@ -1,7 +1,330 @@
 import { useState } from "react";
 import "./App.css";
 
-const API_BASE_URL = "http://localhost:8001";
+const API_BASE_URL = "http://127.0.0.1:8001";
+function PatientDashboard({
+  patient,
+  patientSummary,
+  patientLoading,
+  patientError,
+  patientConsents,
+  patientConsentLoading,
+  patientConsentError,
+  onGrantConsent,
+  onRevokeConsent,
+  patientConsentActionLoading,
+  onLogout,
+}) {
+  if (patientLoading) {
+    return (
+      <div className="patient-app">
+        <div className="patient-state-card">
+          Loading your health records...
+        </div>
+      </div>
+    );
+  }
+
+  if (patientError) {
+    return (
+      <div className="patient-app">
+        <div className="patient-state-card patient-error">
+          {patientError}
+        </div>
+      </div>
+    );
+  }
+
+  if (!patientSummary) {
+    return (
+      <div className="patient-app">
+        <div className="patient-state-card">
+          No health record data is available yet.
+        </div>
+      </div>
+    );
+  }
+
+  const profile = patientSummary.patient || patient;
+
+  return (
+    <div className="patient-app">
+      <header className="patient-header">
+        <div>
+          <span className="patient-eyebrow">MEDBRIDGE</span>
+          <h1>My Health Records</h1>
+          <p>
+            Welcome, {profile?.full_name || "Patient"}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          className="patient-logout-button"
+          onClick={onLogout}
+        >
+          Sign out
+        </button>
+      </header>
+
+      <main className="patient-dashboard">
+        <section className="patient-welcome-card">
+          <div>
+            <span className="patient-eyebrow">
+              PERSONAL HEALTH PROFILE
+            </span>
+
+            <h2>{profile?.full_name || "Patient"}</h2>
+
+            <p>
+              MedBridge ID:{" "}
+              {profile?.medbridge_id || "Not available"}
+            </p>
+          </div>
+
+          <div className="patient-blood-group">
+            <span>Blood Group</span>
+            <strong>
+              {profile?.blood_group || "Not recorded"}
+            </strong>
+          </div>
+        </section>
+
+        <section className="patient-stat-grid">
+          <div className="patient-stat-card">
+            <span>Encounters</span>
+            <strong>
+              {patientSummary.encounters?.length || 0}
+            </strong>
+          </div>
+
+          <div className="patient-stat-card">
+            <span>Conditions</span>
+            <strong>
+              {patientSummary.conditions?.length || 0}
+            </strong>
+          </div>
+
+          <div className="patient-stat-card">
+            <span>Allergies</span>
+            <strong>
+              {patientSummary.allergies?.length || 0}
+            </strong>
+          </div>
+
+          <div className="patient-stat-card">
+            <span>Medications</span>
+            <strong>
+              {patientSummary.prescriptions?.length || 0}
+            </strong>
+          </div>
+        </section>
+
+        <section className="patient-record-grid">
+          <div className="patient-panel">
+            <div className="patient-panel-header">
+              <h3>Allergies</h3>
+            </div>
+
+            {!patientSummary.allergies?.length ? (
+              <p className="patient-empty">
+                No allergies recorded.
+              </p>
+            ) : (
+              patientSummary.allergies.map((allergy) => (
+                <div
+                  className="patient-record-item"
+                  key={allergy.id}
+                >
+                  <strong>
+                    {allergy.substance || "Unknown substance"}
+                  </strong>
+
+                  <span>
+                    {allergy.reaction ||
+                      "Reaction not recorded"}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="patient-panel">
+            <div className="patient-panel-header">
+              <h3>Current Medications</h3>
+            </div>
+
+            {!patientSummary.prescriptions?.length ? (
+              <p className="patient-empty">
+                No prescriptions recorded.
+              </p>
+            ) : (
+              patientSummary.prescriptions.map(
+                (prescription) => (
+                  <div
+                    className="patient-record-item"
+                    key={prescription.id}
+                  >
+                    <strong>
+                      {prescription.medication?.name ||
+                        "Medication"}
+                    </strong>
+
+                    <span>
+                      {prescription.dose ||
+                        "Dose not recorded"}
+
+                      {prescription.frequency
+                        ? ` • ${prescription.frequency}`
+                        : ""}
+                    </span>
+                  </div>
+                )
+              )
+            )}
+          </div>
+        </section>
+
+        <section className="patient-panel patient-full-panel">
+          <div className="patient-panel-header">
+            <h3>Medical Conditions</h3>
+          </div>
+
+          {!patientSummary.conditions?.length ? (
+            <p className="patient-empty">
+              No medical conditions recorded.
+            </p>
+          ) : (
+            patientSummary.conditions.map((condition) => (
+              <div
+                className="patient-record-item"
+                key={condition.id}
+              >
+                <strong>
+                  {condition.name || "Condition"}
+                </strong>
+
+                <span>
+                  {condition.clinical_status ||
+                    "Status not recorded"}
+                </span>
+              </div>
+            ))
+          )}
+        </section>
+
+        <section className="patient-panel patient-full-panel patient-consent-panel">
+          <div className="patient-panel-header">
+            <h3>Consent & Sharing</h3>
+          </div>
+
+          <p className="patient-empty">
+            Control which connected hospitals can access your
+            MedBridge records.
+          </p>
+
+          {patientConsentLoading ? (
+            <p className="patient-empty">
+              Loading consent settings...
+            </p>
+          ) : patientConsentError ? (
+            <div className="patient-consent-error">
+              {patientConsentError}
+            </div>
+          ) : !patientConsents?.length ? (
+            <p className="patient-consent-empty">
+              You have not granted access to any connected
+              hospital yet.
+            </p>
+          ) : (
+            <div className="patient-consent-list">
+              {patientConsents.map((consent) => {
+                const mapping =
+                  patientSummary.hospital_mappings?.find(
+                    (item) =>
+                      item.hospital_id ===
+                      consent.hospital_id
+                  );
+
+                const hospitalName =
+                  mapping?.source_system ||
+                  `Hospital ${consent.hospital_id}`;
+
+                const isActive =
+                  consent.status === "active";
+
+                return (
+                  <div
+                    className="patient-consent-item"
+                    key={consent.id}
+                  >
+                    <div className="patient-consent-details">
+                      <strong>{hospitalName}</strong>
+
+                      <span>
+                        Hospital patient ID:{" "}
+                        {mapping?.external_patient_id ||
+                          "Not available"}
+                      </span>
+
+                      <span>
+                        Purpose: {consent.purpose}
+                      </span>
+
+                      <span
+                        className={`patient-consent-status ${
+                          isActive
+                            ? "active"
+                            : "revoked"
+                        }`}
+                      >
+                        {consent.status}
+                      </span>
+                    </div>
+
+                    {isActive ? (
+                      <button
+                        type="button"
+                        className="patient-consent-action revoke"
+                        disabled={
+                          patientConsentActionLoading
+                        }
+                        onClick={() =>
+                          onRevokeConsent(consent.id)
+                        }
+                      >
+                        {patientConsentActionLoading
+                          ? "Updating..."
+                          : "Revoke access"}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="patient-consent-action"
+                        disabled={
+                          patientConsentActionLoading
+                        }
+                        onClick={() =>
+                          onGrantConsent(
+                            consent.hospital_id
+                          )
+                        }
+                      >
+                        {patientConsentActionLoading
+                          ? "Updating..."
+                          : "Grant access"}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </main>
+    </div>
+  );
+}
 
 function App() {
   const [searchId, setSearchId] = useState("");
@@ -19,11 +342,168 @@ function App() {
   );
 
   const [currentUser, setCurrentUser] = useState(null);
+  const [patientSummary, setPatientSummary] = useState(null);
+  const [patientLoading, setPatientLoading] = useState(false);
+  const [patientError, setPatientError] = useState("");
+  const [patientConsents, setPatientConsents] = useState([]);
+  const [patientConsentLoading, setPatientConsentLoading] = useState(false);
+  const [patientConsentError, setPatientConsentError] = useState("");
+const [patientConsentActionLoading, setPatientConsentActionLoading] =
+  useState(false);
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
+
+  async function loadPatientDashboard(token) {
+  setPatientLoading(true);
+  setPatientError("");
+  setPatientConsentLoading(true);
+  setPatientConsentError("");
+
+  try {
+    const [profileResponse, summaryResponse, consentResponse] =
+      await Promise.all([
+        fetch(`${API_BASE_URL}/patients/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }),
+
+        fetch(`${API_BASE_URL}/patients/me/summary`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }),
+
+        fetch(`${API_BASE_URL}/consents/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }),
+      ]);
+
+    if (!profileResponse.ok || !summaryResponse.ok) {
+      throw new Error(
+        "Unable to load your health records."
+      );
+    }
+
+    if (!consentResponse.ok) {
+      throw new Error(
+        "Unable to load your consent settings."
+      );
+    }
+
+    const profile = await profileResponse.json();
+    const summary = await summaryResponse.json();
+    const consents = await consentResponse.json();
+
+    setPatient(profile);
+    setPatientSummary(summary);
+    setPatientConsents(consents);
+  } catch (requestError) {
+    setPatientError(
+      requestError.message ||
+        "Unable to load your health records."
+    );
+  } finally {
+    setPatientLoading(false);
+    setPatientConsentLoading(false);
+  }
+}
+
+async function handleGrantConsent(hospitalId) {
+  setPatientConsentActionLoading(true);
+  setPatientConsentError("");
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/consents/me`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          hospital_id: hospitalId,
+          purpose: "Continuity of care",
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.detail || "Unable to grant consent."
+      );
+    }
+
+    setPatientConsents((current) => {
+  const existingIndex = current.findIndex(
+    (consent) => consent.hospital_id === data.hospital_id
+  );
+
+  if (existingIndex === -1) {
+    return [...current, data];
+  }
+
+  return current.map((consent, index) =>
+    index === existingIndex ? data : consent
+  );
+});
+  } catch (requestError) {
+    setPatientConsentError(
+      requestError.message ||
+        "Unable to grant consent."
+    );
+  } finally {
+    setPatientConsentActionLoading(false);
+  }
+}
+
+async function handleRevokeConsent(consentId) {
+  setPatientConsentActionLoading(true);
+  setPatientConsentError("");
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/consents/me/${consentId}/revoke`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.detail || "Unable to revoke consent."
+      );
+    }
+
+    setPatientConsents((current) =>
+      current.map((consent) =>
+        consent.id === consentId
+          ? data
+          : consent
+      )
+    );
+  } catch (requestError) {
+    setPatientConsentError(
+      requestError.message ||
+        "Unable to revoke consent."
+    );
+  } finally {
+    setPatientConsentActionLoading(false);
+  }
+}
 
   async function loginDoctor(email, password) {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
@@ -58,11 +538,15 @@ function App() {
       throw new Error("Unable to load doctor profile.");
     }
 
-    const user = await meResponse.json();
-    setCurrentUser(user);
-  }
+const user = await meResponse.json();
+setCurrentUser(user);
 
-  async function handleLogin(event) {
+if (user.role === "patient") {
+  await loadPatientDashboard(data.access_token);
+}
+}
+
+async function handleLogin(event) {
     event.preventDefault();
 
     setLoginLoading(true);
@@ -85,6 +569,9 @@ function App() {
     setAccessToken("");
     setCurrentUser(null);
     setPatient(null);
+    setPatientSummary(null);
+    setPatientError("");
+    setPatientLoading(false);
     setRecord(null);
     setSearchResults([]);
     setSearchId("");
@@ -400,6 +887,26 @@ function App() {
       </div>
     );
   }
+
+if (currentUser?.role === "patient") {
+  return (
+    <PatientDashboard
+      patient={patient}
+      patientSummary={patientSummary}
+      patientLoading={patientLoading}
+      patientError={patientError}
+      patientConsents={patientConsents}
+      patientConsentLoading={patientConsentLoading}
+      patientConsentError={patientConsentError}
+      onGrantConsent={handleGrantConsent}
+      onRevokeConsent={handleRevokeConsent}
+      patientConsentActionLoading={
+        patientConsentActionLoading
+      }
+      onLogout={logoutDoctor}
+    />
+  );
+}
 
   return (
     <div className="app-shell">

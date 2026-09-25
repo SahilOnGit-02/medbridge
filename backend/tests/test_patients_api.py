@@ -76,7 +76,27 @@ def setup_database():
         blood_group="B+",
     )
 
-    db.add_all([patient_a, patient_b])
+    patient_c = Patient(
+        medbridge_id="MB-TEST-C-001",
+        full_name="Test Patient C",
+        date_of_birth=date(2002, 3, 3),
+        blood_group="O+",
+    )
+
+    db.add_all([patient_a, patient_b, patient_c])
+    db.flush()
+
+    patient_user = User(
+        email="patient.test@medbridge.in",
+        full_name="Test Patient A",
+        password_hash=hash_password("TestPatientA123!"),
+        role="patient",
+        hospital_id=None,
+        patient=patient_a,
+        is_active=True,
+    )
+
+    db.add(patient_user)
     db.flush()
 
     medication = Medication(
@@ -101,6 +121,12 @@ def setup_database():
                 patient_id=patient_b.id,
                 hospital_id=hospital_b.id,
                 external_patient_id="TEST-B-001",
+                source_system="test",
+            ),
+            PatientHospitalMapping(
+                patient_id=patient_c.id,
+                hospital_id=hospital_a.id,
+                external_patient_id="TEST-C-001",
                 source_system="test",
             ),
             User(
@@ -158,6 +184,41 @@ def login_as_hospital_a_doctor():
 
     return response.json()["access_token"]
 
+def login_as_patient():
+    response = client.post(
+        "/auth/login",
+        json={
+            "email": "patient.test@medbridge.in",
+            "password": "TestPatientA123!",
+        },
+    )
+    assert response.status_code == 200
+    return response.json()["access_token"]
+
+
+def test_patient_can_retrieve_own_profile():
+    token = login_as_patient()
+    response = client.get(
+        "/patients/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["medbridge_id"] == "MB-TEST-A-001"
+    assert data["full_name"] == "Test Patient A"
+    assert data["blood_group"] == "A+"
+
+
+def test_unlinked_user_cannot_retrieve_patient_profile():
+    token = login_as_hospital_a_doctor()
+    response = client.get(
+        "/patients/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 403
+    assert response.json()["detail"] == (
+        "Authenticated user is not linked to a patient account"
+    )
 
 def test_hospital_doctor_can_retrieve_patient_in_own_hospital():
     token = login_as_hospital_a_doctor()
@@ -193,7 +254,15 @@ def test_hospital_doctor_search_returns_only_own_hospital_patient():
 
     results = response.json()
 
-    assert len(results) == 1
+    assert len(results) == 2
+
+    medbridge_ids = {patient["medbridge_id"] for patient in results}
+
+    assert medbridge_ids == {
+        "MB-TEST-A-001",
+        "MB-TEST-C-001",
+    }
+
     assert results[0]["medbridge_id"] == "MB-TEST-A-001"
 
 
@@ -522,3 +591,173 @@ def test_patient_identity_verification_creates_audit_log():
     assert audit.success is True
     assert audit.resource_type == "patient_identity"
     assert audit.resource_id == 1
+
+def test_hospital_can_create_patient_account_after_verification():
+    token = login_as_hospital_a_doctor()
+
+    verify_response = client.post(
+        "/patients/MB-TEST-C-001/verify",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert verify_response.status_code == 200
+
+    response = client.post(
+        "/patients/MB-TEST-C-001/create-account",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "email": "new.patient@medbridge.in",
+            "password": "NewPatient123!",
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["medbridge_id"] == "MB-TEST-C-001"
+
+    db = TestingSessionLocal()
+
+    patient = (
+        db.query(Patient)
+        .filter_by(medbridge_id="MB-TEST-C-001")
+        .first()
+    )
+
+    assert patient.user_id is not None
+
+    user = (
+        db.query(User)
+        .filter_by(email="new.patient@medbridge.in")
+        .first()
+    )
+
+    assert user is not None
+    assert user.role == "patient"
+    assert user.id == patient.user_id
+
+    db.close()
+
+
+def test_cannot_create_patient_account_before_identity_verification():
+    token = login_as_hospital_a_doctor()
+
+    response = client.post(
+        "/patients/MB-TEST-A-001/create-account",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "email": "unverified.patient@medbridge.in",
+            "password": "NewPatient123!",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == (
+        "Patient identity must be verified before creating an account"
+    )
+
+
+def test_cannot_create_second_patient_account():
+    token = login_as_hospital_a_doctor()
+
+    verify_response = client.post(
+        "/patients/MB-TEST-C-001/verify",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert verify_response.status_code == 200
+
+    first_response = client.post(
+        "/patients/MB-TEST-C-001/create-account",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "email": "first.patient@medbridge.in",
+            "password": "NewPatient123!",
+        },
+    )
+
+    assert first_response.status_code == 200
+
+    second_response = client.post(
+        "/patients/MB-TEST-C-001/create-account",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "email": "second.patient@medbridge.in",
+            "password": "NewPatient123!",
+        },
+    )
+
+    assert second_response.status_code == 409
+    assert second_response.json()["detail"] == "Patient already has an account"
+
+
+def test_patient_account_can_login_after_creation():
+    token = login_as_hospital_a_doctor()
+
+    verify_response = client.post(
+        "/patients/MB-TEST-C-001/verify",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert verify_response.status_code == 200
+
+    create_response = client.post(
+        "/patients/MB-TEST-C-001/create-account",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "email": "login.patient@medbridge.in",
+            "password": "NewPatient123!",
+        },
+    )
+
+    assert create_response.status_code == 200
+
+    login_response = client.post(
+        "/auth/login",
+        json={
+            "email": "login.patient@medbridge.in",
+            "password": "NewPatient123!",
+        },
+    )
+
+    assert login_response.status_code == 200
+
+    patient_token = login_response.json()["access_token"]
+
+    profile_response = client.get(
+        "/patients/me",
+        headers={"Authorization": f"Bearer {patient_token}"},
+    )
+
+    assert profile_response.status_code == 200
+
+    data = profile_response.json()
+
+    assert data["medbridge_id"] == "MB-TEST-C-001"
+    assert data["full_name"] == "Test Patient C"
+
+def test_patient_can_retrieve_own_clinical_summary():
+    token = login_as_patient()
+
+    response = client.get(
+        "/patients/me/summary",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["patient"]["medbridge_id"] == "MB-TEST-A-001"
+
+    assert "hospital_mappings" in data
+    assert "encounters" in data
+    assert "conditions" in data
+    assert "allergies" in data
+    assert "prescriptions" in data
+    assert "observations" in data
+
+    assert isinstance(data["prescriptions"], list)
+
+    for prescription in data["prescriptions"]:
+        assert "medication" in prescription

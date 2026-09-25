@@ -9,3 +9,4 @@ httpx==0.28.1
 PyJWT
 pwdlib[argon2]
 email-validator
+python-multipart==0.0.20

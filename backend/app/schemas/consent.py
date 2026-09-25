@@ -12,6 +12,12 @@ class ConsentCreate(BaseModel):
     expires_at: datetime | None = None
 
 
+class PatientConsentCreate(BaseModel):
+    hospital_id: int
+    purpose: str = "Continuity of care"
+    expires_at: datetime | None = None
+
+
 class ConsentRead(ConsentCreate):
     id: int
     revoked_at: datetime | None = None

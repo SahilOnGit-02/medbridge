@@ -6,6 +6,8 @@ services:
       - .env
     ports:
       - "8001:8000"
+    volumes:
+      - ./backend/uploads:/app/uploads
     networks:
       - medbridge-phase2_default
 

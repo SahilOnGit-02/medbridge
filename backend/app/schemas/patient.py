@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class PatientCreate(BaseModel):
@@ -8,7 +8,6 @@ class PatientCreate(BaseModel):
     full_name: str
     date_of_birth: date | None = None
     blood_group: str | None = None
-
     gender: str | None = None
     phone: str | None = None
     email: str | None = None
@@ -42,3 +41,8 @@ class PatientRead(PatientCreate):
 
 class PatientSearchResult(PatientRead):
     pass
+
+
+class PatientAccountCreate(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
