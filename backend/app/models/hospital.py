@@ -33,3 +33,9 @@ class Hospital(Base):
         back_populates="hospital",
         cascade="all, delete-orphan",
     )
+
+    emergency_accesses = relationship(
+        "EmergencyAccess",
+        back_populates="hospital",
+        cascade="all, delete-orphan",
+    )

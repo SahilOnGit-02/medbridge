@@ -13,3 +13,4 @@ from app.models.clinical import (
 from app.models.user import User
 from app.models.consent import PatientHospitalConsent
 from app.models.audit import AuditLog
+from app.models.emergency import EmergencyAccess

@@ -63,3 +63,9 @@ class User(Base):
         back_populates="user",
         uselist=False,
     )
+    
+    emergency_accesses = relationship(
+        "EmergencyAccess",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
