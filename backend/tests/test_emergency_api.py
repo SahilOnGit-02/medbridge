@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timedelta
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -16,6 +16,7 @@ from app.models.clinical import (
     PatientHospitalMapping,
     Prescription,
 )
+from app.models.emergency import EmergencyAccess
 from app.models.hospital import Hospital
 from app.models.patient import Patient
 from app.models.user import User
@@ -141,6 +142,14 @@ def setup_database():
                 is_active=True,
             ),
             User(
+                 email="doctor.other@medbridge.in",
+                 full_name="Other Emergency Test Doctor",
+                 password_hash=hash_password("OtherEmergencyDoctor123!"),
+                 role="doctor",
+                 hospital_id=hospital_b.id,
+                 is_active=True,
+            ),
+            User(
                 email="patient.emergency@medbridge.in",
                 full_name="Emergency Test Patient",
                 password_hash=hash_password("EmergencyPatient123!"),
@@ -180,6 +189,31 @@ def login_as_emergency_doctor():
 
     return response.json()["access_token"]
 
+def login_as_other_emergency_doctor():
+    response = client.post(
+        "/auth/login",
+        json={
+            "email": "doctor.other@medbridge.in",
+            "password": "OtherEmergencyDoctor123!",
+        },
+    )
+
+    assert response.status_code == 200
+
+    return response.json()["access_token"]
+
+def login_as_other_emergency_doctor():
+    response = client.post(
+        "/auth/login",
+        json={
+            "email": "doctor.other@medbridge.in",
+            "password": "OtherEmergencyDoctor123!",
+        },
+    )
+
+    assert response.status_code == 200
+
+    return response.json()["access_token"]
 
 def test_emergency_access_requires_authentication():
     response = client.post(
@@ -318,3 +352,153 @@ def test_emergency_access_can_be_ended():
 
     assert response.status_code == 200
     assert response.json()["status"] == "ended"
+
+def test_emergency_access_cannot_be_viewed_by_another_doctor():
+    token = login_as_emergency_doctor()
+
+    create_response = client.post(
+        "/emergency-access",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "patient_id": 1,
+            "reason": "Emergency evaluation required",
+        },
+    )
+
+    assert create_response.status_code == 201
+
+    access_id = create_response.json()["id"]
+
+    other_token = login_as_other_emergency_doctor()
+
+    response = client.get(
+        f"/emergency-access/{access_id}",
+        headers={"Authorization": f"Bearer {other_token}"},
+    )
+
+    assert response.status_code == 403
+
+
+def test_emergency_access_cannot_be_ended_by_another_doctor():
+    token = login_as_emergency_doctor()
+
+    create_response = client.post(
+        "/emergency-access",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "patient_id": 1,
+            "reason": "Emergency evaluation required",
+        },
+    )
+
+    assert create_response.status_code == 201
+
+    access_id = create_response.json()["id"]
+
+    other_token = login_as_other_emergency_doctor()
+
+    response = client.post(
+        f"/emergency-access/{access_id}/end",
+        headers={"Authorization": f"Bearer {other_token}"},
+    )
+
+    assert response.status_code == 403
+
+
+def test_expired_emergency_access_cannot_be_viewed():
+    token = login_as_emergency_doctor()
+
+    create_response = client.post(
+        "/emergency-access",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "patient_id": 1,
+            "reason": "Emergency evaluation required",
+        },
+    )
+
+    assert create_response.status_code == 201
+
+    access_id = create_response.json()["id"]
+
+    db = TestingSessionLocal()
+
+    access = db.get(EmergencyAccess, access_id)
+
+    assert access is not None
+
+    access.expires_at = datetime.utcnow() - timedelta(minutes=1)
+
+    db.commit()
+    db.close()
+
+    response = client.get(
+        f"/emergency-access/{access_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Emergency access has expired"
+
+def test_emergency_access_creates_audit_events():
+    token = login_as_emergency_doctor()
+
+    # Grant emergency access
+    create_response = client.post(
+        "/emergency-access",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "patient_id": 1,
+            "reason": "Emergency evaluation required",
+        },
+    )
+
+    assert create_response.status_code == 201
+
+    access_id = create_response.json()["id"]
+
+    # View emergency profile
+    view_response = client.get(
+        f"/emergency-access/{access_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert view_response.status_code == 200
+
+    # End emergency access
+    end_response = client.post(
+        f"/emergency-access/{access_id}/end",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert end_response.status_code == 200
+
+    # Verify audit trail
+    db = TestingSessionLocal()
+
+    from app.models.audit import AuditLog
+
+    audit_events = list(
+        db.query(AuditLog)
+        .filter(
+            AuditLog.resource_type == "emergency_access",
+            AuditLog.resource_id == access_id,
+        )
+        .order_by(AuditLog.id)
+    )
+
+    db.close()
+
+    assert len(audit_events) == 3
+
+    assert [event.action for event in audit_events] == [
+        "emergency_access_granted",
+        "emergency_access_viewed",
+        "emergency_access_ended",
+    ]
+
+    assert all(event.success is True for event in audit_events)
+
+    assert all(event.patient_id == 1 for event in audit_events)
+
+    assert all(event.hospital_id == 1 for event in audit_events)
