@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -6,6 +8,7 @@ from app.db.session import get_db
 from app.api.deps import get_current_user, require_role, require_hospital_access
 from app.models.hospital import Hospital
 from app.models.patient import Patient
+from app.models.consent import PatientHospitalConsent
 from app.core.audit import log_audit_event
 from app.models.clinical import (
     PatientHospitalMapping,
@@ -170,6 +173,61 @@ def require_patient_hospital_access(db, current_user, patient_id: int):
             status_code=403,
             detail="User does not have access to this patient",
         )
+
+def require_patient_clinical_read_access(
+    db,
+    current_user,
+    patient_id: int,
+):
+    """
+    Verify that the requesting hospital is allowed to read
+    this patient's clinical record according to patient consent.
+
+    System admins retain the existing unrestricted behavior.
+    """
+
+    if current_user.role == "system_admin":
+        return None
+
+    if current_user.role not in {"doctor", "hospital_admin"}:
+        raise HTTPException(
+            status_code=403,
+            detail="Insufficient permissions",
+        )
+
+    if current_user.hospital_id is None:
+        raise HTTPException(
+            status_code=403,
+            detail="User is not associated with a hospital",
+        )
+
+    consent = db.scalar(
+        select(PatientHospitalConsent)
+        .where(
+            PatientHospitalConsent.patient_id == patient_id,
+            PatientHospitalConsent.hospital_id == current_user.hospital_id,
+            PatientHospitalConsent.status == "active",
+        )
+        .order_by(
+            PatientHospitalConsent.created_at.desc()
+        )
+    )
+
+    if consent is None:
+        raise HTTPException(
+            status_code=403,
+            detail="Patient has not granted clinical record access to this hospital",
+        )
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    if consent.expires_at is not None and consent.expires_at <= now:
+        raise HTTPException(
+            status_code=403,
+            detail="Patient clinical record access has expired",
+        )
+
+    return consent
 
 @router.post(
     "/conditions",
@@ -353,6 +411,12 @@ def get_unified_clinical_record(
         patient_id,
     )
 
+    consent = require_patient_clinical_read_access(
+        db,
+        current_user,
+        patient_id,
+    )
+
     patient = db.get(Patient, patient_id)
 
     if patient is None:
@@ -360,6 +424,7 @@ def get_unified_clinical_record(
             status_code=404,
             detail="Patient not found",
         )
+
     log_audit_event(
         db,
         current_user=current_user,
@@ -372,24 +437,90 @@ def get_unified_clinical_record(
 
     db.commit()
 
-    prescriptions = [
-        UnifiedPrescriptionRead(
-            **PrescriptionRead.model_validate(prescription).model_dump(),
-            medication=MedicationRead.model_validate(prescription.medication),
+    # System admins retain the existing unrestricted behavior.
+    if consent is None:
+        hospital_mappings = patient.hospital_mappings
+        encounters = patient.encounters
+        conditions = patient.conditions
+        allergies = patient.allergies
+        prescriptions_source = patient.prescriptions
+        observations = patient.observations
+
+        prescriptions = [
+            UnifiedPrescriptionRead(
+                **PrescriptionRead.model_validate(
+                    prescription
+                ).model_dump(),
+                medication=MedicationRead.model_validate(
+                    prescription.medication
+                ),
+            )
+            for prescription in prescriptions_source
+        ]
+
+    else:
+        # Only expose the requesting hospital's mapping.
+        hospital_mappings = [
+            mapping
+            for mapping in patient.hospital_mappings
+            if mapping.hospital_id == current_user.hospital_id
+        ]
+
+        encounters = (
+            patient.encounters
+            if consent.share_encounters
+            else []
         )
-        for prescription in patient.prescriptions
-    ]
+
+        conditions = (
+            patient.conditions
+            if consent.share_conditions
+            else []
+        )
+
+        allergies = (
+            patient.allergies
+            if consent.share_allergies
+            else []
+        )
+
+        observations = (
+            patient.observations
+            if consent.share_observations
+            else []
+        )
+
+        prescriptions_source = (
+            patient.prescriptions
+            if consent.share_prescriptions
+            else []
+        )
+
+        prescriptions = [
+            UnifiedPrescriptionRead(
+                **PrescriptionRead.model_validate(
+                    prescription
+                ).model_dump(),
+                medication=(
+                    MedicationRead.model_validate(
+                        prescription.medication
+                    )
+                    if consent.share_medications
+                    else None
+                ),
+            )
+            for prescription in prescriptions_source
+        ]
 
     return UnifiedClinicalRecord(
         patient=PatientRead.model_validate(patient),
-        hospital_mappings=patient.hospital_mappings,
-        encounters=patient.encounters,
-        conditions=patient.conditions,
-        allergies=patient.allergies,
+        hospital_mappings=hospital_mappings,
+        encounters=encounters,
+        conditions=conditions,
+        allergies=allergies,
         prescriptions=prescriptions,
-        observations=patient.observations,
+        observations=observations,
     )
-
 
 @router.get(
     "/resolve/{hospital_id}/{external_patient_id}",

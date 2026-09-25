@@ -103,7 +103,7 @@ class ObservationRead(ObservationCreate):
 
 
 class UnifiedPrescriptionRead(PrescriptionRead):
-    medication: MedicationRead
+    medication: MedicationRead | None = None
 
 
 class UnifiedClinicalRecord(BaseModel):

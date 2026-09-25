@@ -453,3 +453,85 @@ def test_patient_can_revoke_own_consent():
     assert data["hospital_id"] == 1
     assert data["status"] == "revoked"
     assert data["revoked_at"] is not None
+def test_patient_can_create_consent_with_selected_sharing_scopes():
+    token = login_as_patient()
+
+    response = client.post(
+        "/consents/me",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "hospital_id": 1,
+            "purpose": "Selective continuity of care",
+            "share_allergies": True,
+            "share_medications": True,
+            "share_conditions": False,
+            "share_prescriptions": True,
+            "share_observations": False,
+            "share_encounters": True,
+        },
+    )
+
+    assert response.status_code == 201
+
+    data = response.json()
+
+    assert data["share_allergies"] is True
+    assert data["share_medications"] is True
+    assert data["share_conditions"] is False
+    assert data["share_prescriptions"] is True
+    assert data["share_observations"] is False
+    assert data["share_encounters"] is True
+
+
+def test_patient_reactivation_updates_sharing_scopes():
+    token = login_as_patient()
+
+    db = TestingSessionLocal()
+
+    consent = PatientHospitalConsent(
+        patient_id=1,
+        hospital_id=1,
+        status="revoked",
+        purpose="Previous consent",
+        share_allergies=True,
+        share_medications=True,
+        share_conditions=True,
+        share_prescriptions=True,
+        share_observations=True,
+        share_encounters=True,
+        granted_at=datetime(2026, 9, 23, 10, 0, 0),
+        revoked_at=datetime(2026, 9, 23, 12, 0, 0),
+    )
+
+    db.add(consent)
+    db.commit()
+    db.close()
+
+    response = client.post(
+        "/consents/me",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "hospital_id": 1,
+            "purpose": "Updated continuity of care",
+            "share_allergies": False,
+            "share_medications": True,
+            "share_conditions": False,
+            "share_prescriptions": True,
+            "share_observations": False,
+            "share_encounters": True,
+        },
+    )
+
+    assert response.status_code == 201
+
+    data = response.json()
+
+    assert data["status"] == "active"
+    assert data["purpose"] == "Updated continuity of care"
+
+    assert data["share_allergies"] is False
+    assert data["share_medications"] is True
+    assert data["share_conditions"] is False
+    assert data["share_prescriptions"] is True
+    assert data["share_observations"] is False
+    assert data["share_encounters"] is True

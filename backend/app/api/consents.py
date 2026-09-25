@@ -93,7 +93,6 @@ def list_my_consents(
 
     return db.scalars(query).all()
 
-
 @router.post(
     "/me",
     response_model=ConsentRead,
@@ -154,6 +153,12 @@ def create_my_consent(
     if existing_revoked_consent is not None:
         existing_revoked_consent.status = "active"
         existing_revoked_consent.purpose = payload.purpose
+        existing_revoked_consent.share_allergies = payload.share_allergies
+        existing_revoked_consent.share_medications = payload.share_medications
+        existing_revoked_consent.share_conditions = payload.share_conditions
+        existing_revoked_consent.share_prescriptions = payload.share_prescriptions
+        existing_revoked_consent.share_observations = payload.share_observations
+        existing_revoked_consent.share_encounters = payload.share_encounters
         existing_revoked_consent.granted_at = now
         existing_revoked_consent.expires_at = payload.expires_at
         existing_revoked_consent.revoked_at = None
@@ -168,6 +173,12 @@ def create_my_consent(
         hospital_id=payload.hospital_id,
         status="active",
         purpose=payload.purpose,
+        share_allergies=payload.share_allergies,
+        share_medications=payload.share_medications,
+        share_conditions=payload.share_conditions,
+        share_prescriptions=payload.share_prescriptions,
+        share_observations=payload.share_observations,
+        share_encounters=payload.share_encounters,
         granted_at=now,
         expires_at=payload.expires_at,
         revoked_at=None,

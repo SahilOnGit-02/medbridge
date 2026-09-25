@@ -11,7 +11,17 @@ from app.core.security import hash_password
 from app.core.audit import log_audit_event
 from app.db.session import Base
 from app.main import app
-from app.models.clinical import Medication, PatientHospitalMapping
+from app.models.clinical import (
+    Allergy,
+    Condition,
+    Encounter,
+    Medication,
+    Observation,
+    PatientHospitalMapping,
+    Prescription,
+)
+
+from app.models.consent import PatientHospitalConsent
 from app.models.hospital import Hospital
 from app.models.patient import Patient
 from app.models.user import User
@@ -107,6 +117,54 @@ def setup_database():
     )
 
     db.add(medication)
+    db.flush()
+
+    encounter = Encounter(
+        patient_id=patient_a.id,
+        hospital_id=hospital_a.id,
+        encounter_type="outpatient",
+        reason="Test consultation",
+        started_at=datetime(2026, 9, 24, 10, 0, 0),
+    )
+
+
+
+    allergy = Allergy(
+        patient_id=patient_a.id,
+        substance="Test Penicillin",
+        reaction="Test rash",
+        severity="moderate",
+    )
+
+    prescription = Prescription(
+        patient_id=patient_a.id,
+        medication_id=medication.id,
+        dose="500 mg",
+        frequency="twice daily",
+        route="oral",
+        status="active",
+        instructions="Test prescription",
+    )
+
+    observation = Observation(
+        patient_id=patient_a.id,
+        name="Test Blood Pressure",
+        value="120/80",
+        unit="mmHg",
+        observed_at=datetime(2026, 9, 24, 10, 30, 0),
+        status="final",
+    )
+
+    db.add_all(
+        [
+            encounter,
+            
+            allergy,
+            prescription,
+            observation,
+        ]
+    )
+
     db.flush()
 
     db.add_all(
@@ -761,3 +819,192 @@ def test_patient_can_retrieve_own_clinical_summary():
 
     for prescription in data["prescriptions"]:
         assert "medication" in prescription
+
+def test_hospital_doctor_cannot_read_clinical_record_without_consent():
+    token = login_as_hospital_a_doctor()
+
+    response = client.get(
+        "/clinical/patients/1/record",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == (
+        "Patient has not granted clinical record access to this hospital"
+    )
+
+def test_hospital_doctor_can_read_clinical_record_with_full_consent():
+    db = TestingSessionLocal()
+
+    consent = PatientHospitalConsent(
+        patient_id=1,
+        hospital_id=1,
+        status="active",
+        purpose="Continuity of care",
+        share_allergies=True,
+        share_medications=True,
+        share_conditions=True,
+        share_prescriptions=True,
+        share_observations=True,
+        share_encounters=True,
+        granted_at=datetime(2026, 9, 24, 9, 0, 0),
+        expires_at=None,
+        revoked_at=None,
+    )
+
+    db.add(consent)
+
+    condition = Condition(
+        patient_id=1,
+        name="Consent Test Hypertension",
+    )
+
+    db.add(condition)
+    db.commit()
+    db.close()
+
+    token = login_as_hospital_a_doctor()
+
+    response = client.get(
+        "/clinical/patients/1/record",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["patient"]["medbridge_id"] == "MB-TEST-A-001"
+    assert len(data["hospital_mappings"]) == 1
+    assert len(data["encounters"]) >= 1
+    assert len(data["conditions"]) >= 1
+    assert len(data["allergies"]) >= 1
+    assert len(data["prescriptions"]) >= 1
+    assert len(data["observations"]) >= 1
+
+    prescription = data["prescriptions"][0]
+
+    assert prescription["medication"] is not None
+    assert prescription["medication"]["name"] == "Test Amoxicillin"
+
+def test_hospital_doctor_can_only_read_consented_clinical_categories():
+    db = TestingSessionLocal()
+
+    consent = PatientHospitalConsent(
+        patient_id=1,
+        hospital_id=1,
+        status="active",
+        purpose="Limited clinical access",
+        share_allergies=True,
+        share_medications=False,
+        share_conditions=True,
+        share_prescriptions=False,
+        share_observations=False,
+        share_encounters=False,
+        granted_at=datetime(2026, 9, 24, 9, 0, 0),
+        expires_at=None,
+        revoked_at=None,
+    )
+
+    db.add(consent)
+
+    condition = Condition(
+        patient_id=1,
+        name="Partial Consent Hypertension",
+    )
+
+    db.add(condition)
+    db.commit()
+    db.close()
+
+    token = login_as_hospital_a_doctor()
+
+    response = client.get(
+        "/clinical/patients/1/record",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    # Categories explicitly shared by the patient
+    assert len(data["conditions"]) >= 1
+    assert len(data["allergies"]) >= 1
+
+    # Categories explicitly withheld by the patient
+    assert data["encounters"] == []
+    assert data["prescriptions"] == []
+    assert data["observations"] == []
+
+
+
+def test_hospital_doctor_cannot_read_clinical_record_with_expired_consent():
+    db = TestingSessionLocal()
+
+    consent = PatientHospitalConsent(
+        patient_id=1,
+        hospital_id=1,
+        status="active",
+        purpose="Expired clinical access",
+        share_allergies=True,
+        share_medications=True,
+        share_conditions=True,
+        share_prescriptions=True,
+        share_observations=True,
+        share_encounters=True,
+        granted_at=datetime(2026, 9, 20, 9, 0, 0),
+        expires_at=datetime(2026, 9, 24, 9, 0, 0),
+        revoked_at=None,
+    )
+
+    db.add(consent)
+    db.commit()
+    db.close()
+
+    token = login_as_hospital_a_doctor()
+
+    response = client.get(
+        "/clinical/patients/1/record",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == (
+        "Patient clinical record access has expired"
+    )
+
+def test_hospital_doctor_cannot_read_clinical_record_with_revoked_consent():
+    db = TestingSessionLocal()
+
+    consent = PatientHospitalConsent(
+        patient_id=1,
+        hospital_id=1,
+        status="revoked",
+        purpose="Revoked clinical access",
+        share_allergies=True,
+        share_medications=True,
+        share_conditions=True,
+        share_prescriptions=True,
+        share_observations=True,
+        share_encounters=True,
+        granted_at=datetime(2026, 9, 20, 9, 0, 0),
+        expires_at=None,
+        revoked_at=datetime(2026, 9, 23, 9, 0, 0),
+    )
+
+    db.add(consent)
+    db.commit()
+    db.close()
+
+    token = login_as_hospital_a_doctor()
+
+    response = client.get(
+        "/clinical/patients/1/record",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == (
+        "Patient has not granted clinical record access to this hospital"
+    )
