@@ -8,7 +8,7 @@ from app.api.fhir import router as fhir_router
 from app.api.auth import router as auth_router
 from app.api.consents import router as consents_router
 from app.api.emergency import router as emergency_router
-
+from app.api.patient_access import router as patient_access_router
 
 app = FastAPI(title="MedBridge API", version="0.2.0")
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
@@ -36,3 +36,4 @@ app.include_router(fhir_router)
 app.include_router(auth_router)
 app.include_router(consents_router)
 app.include_router(emergency_router)
+app.include_router(patient_access_router)

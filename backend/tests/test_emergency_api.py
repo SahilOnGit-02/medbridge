@@ -189,6 +189,19 @@ def login_as_emergency_doctor():
 
     return response.json()["access_token"]
 
+def login_as_emergency_patient():
+    response = client.post(
+        "/auth/login",
+        json={
+            "email": "patient.emergency@medbridge.in",
+            "password": "EmergencyPatient123!",
+        },
+    )
+
+    assert response.status_code == 200
+
+    return response.json()["access_token"]
+
 def login_as_other_emergency_doctor():
     response = client.post(
         "/auth/login",
@@ -502,3 +515,156 @@ def test_emergency_access_creates_audit_events():
     assert all(event.patient_id == 1 for event in audit_events)
 
     assert all(event.hospital_id == 1 for event in audit_events)
+
+def test_patient_can_retrieve_own_emergency_profile():
+    token = login_as_emergency_patient()
+
+    response = client.get(
+        "/patients/me/emergency-profile",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["blood_group"] == "A+"
+
+    assert data["emergency_contact"]["name"] == "Emergency Contact A"
+    assert data["emergency_contact"]["phone"] == "9999999999"
+
+    assert len(data["allergies"]) == 1
+    assert data["allergies"][0]["substance"] == "Test Penicillin"
+
+    assert len(data["current_medications"]) == 1
+    assert data["current_medications"][0]["name"] == "Test Amoxicillin"
+
+    assert len(data["active_conditions"]) == 1
+    assert data["active_conditions"][0]["name"] == "Test Diabetes"
+
+
+def test_patient_can_update_emergency_profile():
+    token = login_as_emergency_patient()
+
+    response = client.patch(
+        "/patients/me/emergency-profile",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "blood_group": "O+",
+            "emergency_contact_name": "Updated Emergency Contact",
+            "emergency_contact_phone": "8888888888",
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["blood_group"] == "O+"
+    assert data["emergency_contact"]["name"] == "Updated Emergency Contact"
+    assert data["emergency_contact"]["phone"] == "8888888888"
+
+    # Clinical records must remain unchanged.
+    assert data["allergies"][0]["substance"] == "Test Penicillin"
+    assert data["current_medications"][0]["name"] == "Test Amoxicillin"
+    assert data["active_conditions"][0]["name"] == "Test Diabetes"
+
+
+def test_doctor_cannot_retrieve_patient_emergency_profile():
+    token = login_as_emergency_doctor()
+
+    response = client.get(
+        "/patients/me/emergency-profile",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == (
+        "Authenticated user is not linked to a patient account"
+    )
+
+
+def test_doctor_cannot_update_patient_emergency_profile():
+    token = login_as_emergency_doctor()
+
+    response = client.patch(
+        "/patients/me/emergency-profile",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "blood_group": "O+",
+            "emergency_contact_name": "Unauthorized Update",
+            "emergency_contact_phone": "1111111111",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == (
+        "Authenticated user is not linked to a patient account"
+    )
+
+
+def test_patient_cannot_modify_clinical_records_through_emergency_profile():
+    token = login_as_emergency_patient()
+
+    response = client.patch(
+        "/patients/me/emergency-profile",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "blood_group": "O+",
+            "allergies": [],
+            "current_medications": [],
+            "active_conditions": [],
+        },
+    )
+
+    assert response.status_code == 422
+
+    errors = response.json()["detail"]
+
+    error_fields = {
+        error["loc"][-1]
+        for error in errors
+    }
+
+    assert error_fields == {
+        "allergies",
+        "current_medications",
+        "active_conditions",
+    }
+
+
+def test_emergency_profile_update_creates_audit_event():
+    token = login_as_emergency_patient()
+
+    response = client.patch(
+        "/patients/me/emergency-profile",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "blood_group": "O+",
+            "emergency_contact_name": "Audit Test Contact",
+            "emergency_contact_phone": "7777777777",
+        },
+    )
+
+    assert response.status_code == 200
+
+    db = TestingSessionLocal()
+
+    from app.models.audit import AuditLog
+
+    audit = (
+        db.query(AuditLog)
+        .filter_by(
+            action="patient_emergency_profile_updated",
+            patient_id=1,
+        )
+        .order_by(AuditLog.id.desc())
+        .first()
+    )
+
+    db.close()
+
+    assert audit is not None
+    assert audit.success is True
+    assert audit.resource_type == "patient_emergency_profile"
+    assert audit.resource_id == 1

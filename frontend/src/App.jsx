@@ -3,6 +3,7 @@ import "./App.css";
 
 const API_BASE_URL = "http://127.0.0.1:8001";
 function PatientDashboard({
+  accessToken,
   patient,
   patientSummary,
   patientLoading,
@@ -13,6 +14,20 @@ function PatientDashboard({
   onGrantConsent,
   onRevokeConsent,
   patientConsentActionLoading,
+  patientAccessHistory,
+  patientAccessHistoryLoading,
+  patientAccessHistoryError,
+    patientEmergencyProfile,
+    patientEmergencyProfileLoading,
+    patientEmergencyProfileError,
+    setPatientEmergencyProfile,
+    setPatientEmergencyProfileError,
+    patientEmergencyProfileSaving,
+    setPatientEmergencyProfileSaving,
+    patientEmergencyProfileEdit,
+    patientEmergencyProfileForm,
+    setPatientEmergencyProfileEdit,
+    setPatientEmergencyProfileForm,
   onLogout,
 }) {
   if (patientLoading) {
@@ -213,6 +228,312 @@ function PatientDashboard({
           )}
         </section>
 
+<section className="patient-panel patient-full-panel patient-emergency-profile-panel">
+  <div className="patient-panel-header">
+    <div>
+      <h3>Emergency Profile</h3>
+      <p className="patient-empty">
+        Information that can help medical staff during an emergency.
+      </p>
+    </div>
+
+    {!patientEmergencyProfileLoading &&
+      patientEmergencyProfile &&
+      !patientEmergencyProfileEdit && (
+        <button
+          type="button"
+          className="patient-secondary-button"
+          onClick={() => {
+            setPatientEmergencyProfileForm({
+              blood_group:
+                patientEmergencyProfile.blood_group || "",
+              emergency_contact_name:
+                patientEmergencyProfile.emergency_contact?.name || "",
+              emergency_contact_phone:
+                patientEmergencyProfile.emergency_contact?.phone || "",
+            });
+            setPatientEmergencyProfileEdit(true);
+          }}
+        >
+          Edit
+        </button>
+      )}
+  </div>
+
+  {patientEmergencyProfileLoading ? (
+    <p className="patient-empty">
+      Loading emergency profile...
+    </p>
+  ) : patientEmergencyProfileError ? (
+    <div className="patient-consent-error">
+      {patientEmergencyProfileError}
+    </div>
+  ) : !patientEmergencyProfile ? (
+    <p className="patient-empty">
+      Emergency profile information is not available.
+    </p>
+  ) : patientEmergencyProfileEdit ? (
+    <div className="patient-emergency-profile-form">
+      <div className="patient-form-grid">
+        <label>
+          <span>Blood Group</span>
+          <input
+            type="text"
+            value={patientEmergencyProfileForm.blood_group}
+            onChange={(event) =>
+              setPatientEmergencyProfileForm((current) => ({
+                ...current,
+                blood_group: event.target.value,
+              }))
+            }
+            placeholder="e.g. O+"
+          />
+        </label>
+
+        <label>
+          <span>Emergency Contact Name</span>
+          <input
+            type="text"
+            value={
+              patientEmergencyProfileForm.emergency_contact_name
+            }
+            onChange={(event) =>
+              setPatientEmergencyProfileForm((current) => ({
+                ...current,
+                emergency_contact_name: event.target.value,
+              }))
+            }
+            placeholder="Full name"
+          />
+        </label>
+
+        <label>
+          <span>Emergency Contact Phone</span>
+          <input
+            type="tel"
+            value={
+              patientEmergencyProfileForm.emergency_contact_phone
+            }
+            onChange={(event) =>
+              setPatientEmergencyProfileForm((current) => ({
+                ...current,
+                emergency_contact_phone: event.target.value,
+              }))
+            }
+            placeholder="Phone number"
+          />
+        </label>
+      </div>
+
+      <p className="patient-empty">
+        Allergies, medications, and medical conditions are managed
+        through your medical records and cannot be edited here.
+      </p>
+
+      <div className="patient-consent-actions">
+        <button
+          type="button"
+          className="patient-secondary-button"
+          onClick={() => {
+            setPatientEmergencyProfileEdit(false);
+            setPatientEmergencyProfileForm({
+              blood_group:
+                patientEmergencyProfile.blood_group || "",
+              emergency_contact_name:
+                patientEmergencyProfile.emergency_contact?.name || "",
+              emergency_contact_phone:
+                patientEmergencyProfile.emergency_contact?.phone || "",
+            });
+          }}
+          disabled={patientEmergencyProfileSaving}
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          className="patient-primary-button"
+          disabled={patientEmergencyProfileSaving}
+          onClick={async () => {
+            setPatientEmergencyProfileSaving(true);
+            setPatientEmergencyProfileError("");
+
+            try {
+              const response = await fetch(
+                `${API_BASE_URL}/patients/me/emergency-profile`,
+                {
+                  method: "PATCH",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`,
+                  },
+                  body: JSON.stringify({
+                    blood_group:
+                      patientEmergencyProfileForm.blood_group,
+                    emergency_contact_name:
+                      patientEmergencyProfileForm.emergency_contact_name,
+                    emergency_contact_phone:
+                      patientEmergencyProfileForm.emergency_contact_phone,
+                  }),
+                }
+              );
+
+              const data = await response.json();
+
+              if (!response.ok) {
+                throw new Error(
+                  data.detail ||
+                    "Unable to update your emergency profile."
+                );
+              }
+
+              setPatientEmergencyProfile(data);
+
+              setPatientEmergencyProfileForm({
+                blood_group: data.blood_group || "",
+                emergency_contact_name:
+                  data.emergency_contact?.name || "",
+                emergency_contact_phone:
+                  data.emergency_contact?.phone || "",
+              });
+
+              setPatientEmergencyProfileEdit(false);
+            } catch (requestError) {
+              setPatientEmergencyProfileError(
+                requestError.message ||
+                  "Unable to update your emergency profile."
+              );
+            } finally {
+              setPatientEmergencyProfileSaving(false);
+            }
+          }}
+        >
+          {patientEmergencyProfileSaving
+            ? "Saving..."
+            : "Save Changes"}
+        </button>
+      </div>
+    </div>
+  ) : (
+    <div className="patient-emergency-profile-content">
+      <div className="patient-emergency-profile-grid">
+        <div className="patient-emergency-profile-card">
+          <span>Blood Group</span>
+          <strong>
+            {patientEmergencyProfile.blood_group || "Not recorded"}
+          </strong>
+        </div>
+
+        <div className="patient-emergency-profile-card">
+          <span>Emergency Contact</span>
+          <strong>
+            {patientEmergencyProfile.emergency_contact?.name ||
+              "Not recorded"}
+          </strong>
+          <small>
+            {patientEmergencyProfile.emergency_contact?.phone ||
+              "No phone number recorded"}
+          </small>
+        </div>
+      </div>
+
+      <div className="patient-emergency-profile-section">
+        <h4>Allergies</h4>
+
+        {!patientEmergencyProfile.allergies?.length ? (
+          <p className="patient-empty">
+            No allergies recorded.
+          </p>
+        ) : (
+          <div className="patient-record-list">
+            {patientEmergencyProfile.allergies.map((allergy) => (
+              <div
+                className="patient-record-item"
+                key={allergy.id}
+              >
+                <strong>{allergy.substance}</strong>
+
+                <span>
+                  {allergy.reaction || "Reaction not recorded"}
+                  {allergy.severity
+                    ? ` · ${allergy.severity}`
+                    : ""}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="patient-emergency-profile-section">
+        <h4>Current Medications</h4>
+
+        {!patientEmergencyProfile.current_medications?.length ? (
+          <p className="patient-empty">
+            No active medications recorded.
+          </p>
+        ) : (
+          <div className="patient-record-list">
+            {patientEmergencyProfile.current_medications.map(
+              (medication) => (
+                <div
+                  className="patient-record-item"
+                  key={medication.id}
+                >
+                  <strong>{medication.name}</strong>
+
+                  <span>
+                    {medication.strength || ""}
+                    {medication.dose
+                      ? ` · ${medication.dose}`
+                      : ""}
+                    {medication.frequency
+                      ? ` · ${medication.frequency}`
+                      : ""}
+                    {medication.route
+                      ? ` · ${medication.route}`
+                      : ""}
+                  </span>
+                </div>
+              )
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="patient-emergency-profile-section">
+        <h4>Active Conditions</h4>
+
+        {!patientEmergencyProfile.active_conditions?.length ? (
+          <p className="patient-empty">
+            No active conditions recorded.
+          </p>
+        ) : (
+          <div className="patient-record-list">
+            {patientEmergencyProfile.active_conditions.map(
+              (condition) => (
+                <div
+                  className="patient-record-item"
+                  key={condition.id}
+                >
+                  <strong>{condition.name}</strong>
+
+                  <span>
+                    {condition.clinical_status || "Active"}
+                    {condition.diagnosed_on
+                      ? ` · Diagnosed ${condition.diagnosed_on}`
+                      : ""}
+                  </span>
+                </div>
+              )
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )}
+</section>
+
         <section className="patient-panel patient-full-panel patient-consent-panel">
           <div className="patient-panel-header">
             <h3>Consent & Sharing</h3>
@@ -321,12 +642,103 @@ function PatientDashboard({
             </div>
           )}
         </section>
+
+<section className="patient-panel patient-full-panel">
+  <div className="patient-panel-header">
+    <h3>Access History</h3>
+  </div>
+
+  <p className="patient-empty">
+    See when your emergency medical profile has been accessed and by whom.
+  </p>
+
+  {patientAccessHistoryLoading ? (
+    <p className="patient-empty">
+      Loading access history...
+    </p>
+  ) : patientAccessHistoryError ? (
+    <div className="patient-consent-error">
+      {patientAccessHistoryError}
+    </div>
+  ) : !patientAccessHistory?.length ? (
+    <p className="patient-empty">
+      No emergency access activity has been recorded.
+    </p>
+  ) : (
+    <div className="patient-consent-list">
+      {patientAccessHistory.map((event) => {
+        const actionLabels = {
+          emergency_access_granted: "Emergency access granted",
+          emergency_access_viewed: "Emergency profile viewed",
+          emergency_access_ended: "Emergency access ended",
+        };
+
+        const actionLabel =
+          actionLabels[event.action] || event.action;
+
+        const eventDate = event.created_at
+          ? new Date(event.created_at).toLocaleString()
+          : "Unknown time";
+
+        return (
+          <div
+            className="patient-consent-item"
+            key={event.id}
+          >
+            <div className="patient-consent-details">
+              <strong>{actionLabel}</strong>
+
+              <span>
+                Hospital:{" "}
+                {event.action === "patient_emergency_profile_updated" ? "Patient account" : (event.hospital?.name || "Unknown hospital")}
+              </span>
+
+              <span>
+                Accessed by:{" "}
+                {event.user?.full_name ||
+                  "Unknown user"}
+                {event.user?.role
+                  ? ` · ${event.user.role}`
+                  : ""}
+              </span>
+
+              <span>
+                Date: {eventDate}
+              </span>
+
+              {event.action ===
+                "emergency_access_granted" &&
+              event.details ? (
+                <span>
+                  Reason: {event.details}
+                </span>
+              ) : null}
+            </div>
+
+            <span
+              className={`patient-consent-status ${
+                event.success
+                  ? "active"
+                  : "revoked"
+              }`}
+            >
+              {event.success
+                ? "Recorded"
+                : "Failed"}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  )}
+</section>
       </main>
     </div>
   );
 }
 
 function App() {
+
   const [searchId, setSearchId] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [recordSearch, setRecordSearch] = useState("");
@@ -334,7 +746,12 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [record, setRecord] = useState(null);
-  const [emergencyMode, setEmergencyMode] = useState(false);
+  const [emergencyAccess, setEmergencyAccess] = useState(null);
+  const [emergencyProfile, setEmergencyProfile] = useState(null);
+  const [emergencyLoading, setEmergencyLoading] = useState(false);
+  const [emergencyError, setEmergencyError] = useState("");
+  const [emergencyReason, setEmergencyReason] = useState("");
+  const [showEmergencyDialog, setShowEmergencyDialog] = useState(false);
   const [activeView, setActiveView] = useState("dashboard");
 
   const [accessToken, setAccessToken] = useState(
@@ -350,6 +767,26 @@ function App() {
   const [patientConsentError, setPatientConsentError] = useState("");
 const [patientConsentActionLoading, setPatientConsentActionLoading] =
   useState(false);
+const [patientAccessHistory, setPatientAccessHistory] = useState([]);
+const [patientAccessHistoryLoading, setPatientAccessHistoryLoading] =
+  useState(false);
+const [patientAccessHistoryError, setPatientAccessHistoryError] =
+  useState("");
+const [patientEmergencyProfile, setPatientEmergencyProfile] = useState(null);
+const [patientEmergencyProfileLoading, setPatientEmergencyProfileLoading] =
+  useState(false);
+const [patientEmergencyProfileError, setPatientEmergencyProfileError] =
+  useState("");
+const [patientEmergencyProfileSaving, setPatientEmergencyProfileSaving] =
+  useState(false);
+const [patientEmergencyProfileEdit, setPatientEmergencyProfileEdit] =
+  useState(false);
+const [patientEmergencyProfileForm, setPatientEmergencyProfileForm] =
+  useState({
+    blood_group: "",
+    emergency_contact_name: "",
+    emergency_contact_phone: "",
+  });
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -361,6 +798,10 @@ const [patientConsentActionLoading, setPatientConsentActionLoading] =
   setPatientError("");
   setPatientConsentLoading(true);
   setPatientConsentError("");
+  setPatientAccessHistoryLoading(true);
+  setPatientAccessHistoryError("");
+  setPatientEmergencyProfileLoading(true);
+  setPatientEmergencyProfileError("");
 
   try {
     const [profileResponse, summaryResponse, consentResponse] =
@@ -403,14 +844,83 @@ const [patientConsentActionLoading, setPatientConsentActionLoading] =
     setPatient(profile);
     setPatientSummary(summary);
     setPatientConsents(consents);
+try {
+  const accessHistoryResponse = await fetch(
+    `${API_BASE_URL}/patients/me/access-history`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  const accessHistoryData = await accessHistoryResponse.json();
+
+  if (!accessHistoryResponse.ok) {
+    throw new Error(
+      accessHistoryData.detail ||
+        "Unable to load your access history."
+    );
+  }
+
+  setPatientAccessHistory(accessHistoryData);
+} catch (accessHistoryRequestError) {
+  setPatientAccessHistoryError(
+    accessHistoryRequestError.message ||
+      "Unable to load your access history."
+  );
+} finally {
+  setPatientAccessHistoryLoading(false);
+}
+
   } catch (requestError) {
     setPatientError(
       requestError.message ||
         "Unable to load your health records."
     );
-  } finally {
+  }
+  finally {
     setPatientLoading(false);
     setPatientConsentLoading(false);
+  }
+
+  try {
+    const emergencyProfileResponse = await fetch(
+      `${API_BASE_URL}/patients/me/emergency-profile`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const emergencyProfileData =
+      await emergencyProfileResponse.json();
+
+    if (!emergencyProfileResponse.ok) {
+      throw new Error(
+        emergencyProfileData.detail ||
+          "Unable to load your emergency profile."
+      );
+    }
+
+    setPatientEmergencyProfile(emergencyProfileData);
+
+    setPatientEmergencyProfileForm({
+      blood_group:
+        emergencyProfileData.blood_group || "",
+      emergency_contact_name:
+        emergencyProfileData.emergency_contact?.name || "",
+      emergency_contact_phone:
+        emergencyProfileData.emergency_contact?.phone || "",
+    });
+  } catch (emergencyProfileRequestError) {
+    setPatientEmergencyProfileError(
+      emergencyProfileRequestError.message ||
+        "Unable to load your emergency profile."
+    );
+  } finally {
+    setPatientEmergencyProfileLoading(false);
   }
 }
 
@@ -576,7 +1086,11 @@ async function handleLogin(event) {
     setSearchResults([]);
     setSearchId("");
     setRecordSearch("");
-    setEmergencyMode(false);
+    setEmergencyAccess(null);
+    setEmergencyProfile(null);
+    setEmergencyReason("");
+    setEmergencyError("");
+    setShowEmergencyDialog(false);
     setError("");
   }
 
@@ -639,49 +1153,166 @@ async function handleLogin(event) {
     }
   }
 
-  async function selectPatient(selectedPatient) {
-    setLoading(true);
-    setError("");
-    setPatient(null);
-    setRecord(null);
-
-    try {
-      const recordResponse = await fetch(
-        `${API_BASE_URL}/clinical/patients/${selectedPatient.id}/record`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
-      );
-
-      if (recordResponse.status === 401) {
-        logoutDoctor();
-        throw new Error("Your session has expired. Please sign in again.");
-      }
-
-      if (!recordResponse.ok) {
-        throw new Error(
-          "Patient found, but clinical record could not be loaded."
-        );
-      }
-
-      const recordData = await recordResponse.json();
-
+async function selectPatient(selectedPatient) {
+  setLoading(true);
+  setError("");
   setPatient(selectedPatient);
-  setRecord(recordData);
-  setSearchResults([]);
-  setActiveView("dashboard");
-    } catch (requestError) {
-      setError(
-        requestError.message ||
+  setRecord(null);
+
+  try {
+    const recordResponse = await fetch(
+      `${API_BASE_URL}/clinical/patients/${selectedPatient.id}/record`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    if (recordResponse.status === 401) {
+      logoutDoctor();
+      throw new Error("Your session has expired. Please sign in again.");
+    }
+
+    const recordData = await recordResponse.json();
+
+    if (!recordResponse.ok) {
+      throw new Error(
+        recordData.detail ||
           "Patient found, but clinical record could not be loaded."
       );
-    } finally {
-      setLoading(false);
     }
+
+    setPatient(selectedPatient);
+    setRecord(recordData);
+    setSearchResults([]);
+    setActiveView("dashboard");
+  } catch (requestError) {
+    setError(
+      requestError.message ||
+        "Patient found, but clinical record could not be loaded."
+    );
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function requestEmergencyAccess() {
+  if (!patient) {
+    setEmergencyError("Select a patient before requesting emergency access.");
+    return;
   }
 
+  const reason = emergencyReason.trim();
+
+  if (!reason) {
+    setEmergencyError("An emergency reason is required.");
+    return;
+  }
+
+  setEmergencyLoading(true);
+  setEmergencyError("");
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/emergency-access`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          patient_id: patient.id,
+          reason,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (response.status === 401) {
+      logoutDoctor();
+      throw new Error("Your session has expired. Please sign in again.");
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        data.detail || "Unable to start emergency access."
+      );
+    }
+
+    setEmergencyAccess(data);
+    setEmergencyReason("");
+    setShowEmergencyDialog(false);
+
+    const profileResponse = await fetch(
+      `${API_BASE_URL}/emergency-access/${data.id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    const profileData = await profileResponse.json();
+
+    if (!profileResponse.ok) {
+      throw new Error(
+        profileData.detail ||
+          "Emergency access was created but the profile could not be loaded."
+      );
+    }
+
+    setEmergencyProfile(profileData);
+  } catch (requestError) {
+    setEmergencyError(
+      requestError.message ||
+        "Unable to start emergency access."
+    );
+  } finally {
+    setEmergencyLoading(false);
+  }
+}
+
+async function endEmergencyAccess() {
+  if (!emergencyAccess?.id) {
+    return;
+  }
+
+  setEmergencyLoading(true);
+  setEmergencyError("");
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/emergency-access/${emergencyAccess.id}/end`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.detail || "Unable to end emergency access."
+      );
+    }
+
+    setEmergencyAccess(null);
+    setEmergencyProfile(null);
+  } catch (requestError) {
+    setEmergencyError(
+      requestError.message ||
+        "Unable to end emergency access."
+    );
+  } finally {
+    setEmergencyLoading(false);
+  }
+}
 
   async function loadPatients() {
     if (!accessToken) {
@@ -891,6 +1522,7 @@ async function handleLogin(event) {
 if (currentUser?.role === "patient") {
   return (
     <PatientDashboard
+      accessToken={accessToken}
       patient={patient}
       patientSummary={patientSummary}
       patientLoading={patientLoading}
@@ -900,9 +1532,27 @@ if (currentUser?.role === "patient") {
       patientConsentError={patientConsentError}
       onGrantConsent={handleGrantConsent}
       onRevokeConsent={handleRevokeConsent}
-      patientConsentActionLoading={
-        patientConsentActionLoading
+      patientConsentActionLoading={patientConsentActionLoading}
+      patientAccessHistory={patientAccessHistory}
+      patientAccessHistoryLoading={patientAccessHistoryLoading}
+      patientAccessHistoryError={patientAccessHistoryError}
+      patientEmergencyProfile={patientEmergencyProfile}
+      setPatientEmergencyProfile={
+        setPatientEmergencyProfile
       }
+      patientEmergencyProfileLoading={patientEmergencyProfileLoading}
+      patientEmergencyProfileError={patientEmergencyProfileError}
+      setPatientEmergencyProfileError={
+        setPatientEmergencyProfileError
+      }
+      patientEmergencyProfileSaving={patientEmergencyProfileSaving}
+      setPatientEmergencyProfileSaving={
+        setPatientEmergencyProfileSaving
+      }
+      patientEmergencyProfileEdit={patientEmergencyProfileEdit}
+      patientEmergencyProfileForm={patientEmergencyProfileForm}
+      setPatientEmergencyProfileEdit={setPatientEmergencyProfileEdit}
+      setPatientEmergencyProfileForm={setPatientEmergencyProfileForm}
       onLogout={logoutDoctor}
     />
   );
@@ -1027,283 +1677,267 @@ if (currentUser?.role === "patient") {
   </section>
 ) : (
   <>
-    {emergencyMode && (
-          <section className="emergency-view">
-            <div className="emergency-header">
-              <div>
-                <p className="section-label">
-                  EMERGENCY MODE
-                </p>
 
-                <h2>Critical Patient Information</h2>
+{showEmergencyDialog && (
+  <div className="emergency-dialog-backdrop">
+    <div className="emergency-dialog">
+      <p className="section-label">
+        EMERGENCY ACCESS
+      </p>
 
-                <p className="section-description">
-                  Rapid access to essential clinical
-                  information for emergency care.
-                </p>
-              </div>
+      <h2>Request emergency access</h2>
 
-              <button
-                className="emergency-exit-button"
-                onClick={() => setEmergencyMode(false)}
-              >
-                Exit Emergency Mode
-              </button>
-            </div>
+      <p>
+        Emergency access provides a restricted view of
+        critical patient information for immediate care.
+        The action is recorded in the audit trail.
+      </p>
 
-            {!patient || !record ? (
-              <div className="emergency-empty">
-                <strong>No patient selected</strong>
+      <label htmlFor="emergency-reason">
+        Reason for emergency access
+      </label>
 
-                <span>
-                  Search for a patient first, then activate
-                  Emergency Mode.
-                </span>
-              </div>
-            ) : (
-  <div className="emergency-content">
-    <div className="emergency-patient-card">
-  <div className="emergency-patient-identity">
-    <div
-      className={`emergency-patient-avatar ${
-        patient.profile_photo_url ? "has-photo" : ""
-      }`}
-    >
-      {patient.profile_photo_url ? (
-        <img
-          src={patient.profile_photo_url}
-          alt={`${patient.full_name} profile`}
-        />
-      ) : (
-        patient.full_name
-          .split(" ")
-          .map((name) => name[0])
-          .slice(0, 2)
-          .join("")
-          .toUpperCase()
+      <textarea
+        id="emergency-reason"
+        value={emergencyReason}
+        onChange={(event) =>
+          setEmergencyReason(event.target.value)
+        }
+        placeholder="Explain why emergency access is required..."
+        rows={4}
+        autoFocus
+      />
+
+      {emergencyError && (
+        <div className="search-error">
+          {emergencyError}
+        </div>
       )}
-    </div>
 
-    <div className="emergency-patient-name">
-      <span>Patient</span>
-      <strong>{patient.full_name}</strong>
-      <small>{patient.medbridge_id}</small>
-    </div>
-  </div>
+      <div className="emergency-dialog-actions">
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={() => {
+            setShowEmergencyDialog(false);
+            setEmergencyReason("");
+            setEmergencyError("");
+          }}
+          disabled={emergencyLoading}
+        >
+          Cancel
+        </button>
 
-  <div className="emergency-patient-meta">
-    <div>
-      <span>Date of birth</span>
-      <strong>{patient.date_of_birth || "Not recorded"}</strong>
-    </div>
-
-    <div>
-      <span>Age</span>
-      <strong>
-        {patient.date_of_birth
-          ? Math.floor(
-              (new Date() - new Date(patient.date_of_birth)) /
-                (365.25 * 24 * 60 * 60 * 1000)
-            )
-          : "Not recorded"}
-      </strong>
-    </div>
-
-    <div>
-      <span>Blood group</span>
-      <strong>{patient.blood_group || "Not recorded"}</strong>
-    </div>
-
-    <div>
-      <span>Identity</span>
-      <strong>
-        {patient.identity_verification_status === "verified"
-          ? "Verified"
-          : "Not verified"}
-      </strong>
+        <button
+          type="button"
+          className="emergency-button"
+          onClick={requestEmergencyAccess}
+          disabled={
+            emergencyLoading ||
+            !emergencyReason.trim()
+          }
+        >
+          {emergencyLoading
+            ? "Requesting..."
+            : "Confirm Emergency Access"}
+        </button>
+      </div>
     </div>
   </div>
-</div>
-                <div className="emergency-grid">
-                  <div className="emergency-card">
-                    <span className="emergency-card-label">
-                      BLOOD GROUP
-                    </span>
+)}
 
-                    <strong>
-                      {patient.blood_group ||
-                        "Not recorded"}
-                    </strong>
-                  </div>
+    {emergencyProfile && (
+  <section className="emergency-view">
+    <div className="emergency-header">
+      <div>
+        <p className="section-label">
+          EMERGENCY ACCESS ACTIVE
+        </p>
 
-                  <div className="emergency-card allergy-warning">
-                    <span className="emergency-card-label">
-                      ALLERGIES
-                    </span>
+        <h2>Critical Patient Information</h2>
 
-                    <strong>
-                      {record.allergies.length
-                        ? record.allergies
-                            .map(
-                              (allergy) =>
-                                allergy.substance
-                            )
-                            .join(", ")
-                        : "No known allergies recorded"}
-                    </strong>
-                  </div>
+        <p className="section-description">
+          Restricted emergency information authorized for
+          immediate care.
+        </p>
+      </div>
 
-                  <div className="emergency-card">
-                    <span className="emergency-card-label">
-                      ACTIVE MEDICATIONS
-                    </span>
+      <button
+        className="emergency-exit-button"
+        onClick={endEmergencyAccess}
+        disabled={emergencyLoading}
+      >
+        {emergencyLoading
+          ? "Ending..."
+          : "End Emergency Access"}
+      </button>
+    </div>
 
-                    <strong>
-                      {record.prescriptions.length
-                        ? [
-                            ...new Set(
-                              record.prescriptions.map(
-                                (prescription) =>
-                                  prescription.medication
-                                    ?.name ||
-                                  "Medication"
-                              )
-                            ),
-                          ].join(", ")
-                        : "No medications recorded"}
-                    </strong>
-                  </div>
+    {emergencyError && (
+      <div className="search-error">
+        {emergencyError}
+      </div>
+    )}
 
-                  <div className="emergency-card">
-                    <span className="emergency-card-label">
-                      RECENT CONDITIONS
-                    </span>
+    <div className="emergency-content">
+      <div className="emergency-patient-card">
+        <div className="emergency-patient-identity">
+          <div className="emergency-patient-avatar">
+            {emergencyProfile.patient.full_name
+              .split(" ")
+              .map((name) => name[0])
+              .slice(0, 2)
+              .join("")
+              .toUpperCase()}
+          </div>
 
-                    <strong>
-                      {record.conditions.length
-                        ? [
-                            ...new Set(
-                              record.conditions
-                                .slice(0, 3)
-                                .map(
-                                  (condition) =>
-                                    condition.name
-                                )
-                            ),
-                          ].join(", ")
-                        : "No conditions recorded"}
-                    </strong>
-                  </div>
+          <div className="emergency-patient-name">
+            <span>Patient</span>
 
-                  <div className="emergency-card">
-                    <span className="emergency-card-label">
-                      RECENT ENCOUNTER
-                    </span>
+            <strong>
+              {emergencyProfile.patient.full_name}
+            </strong>
 
-                    <strong>
-                      {record.encounters.length
-                        ? record.encounters
-                            .slice()
-                            .sort(
-                              (a, b) =>
-                                new Date(
-                                  b.started_at
-                                ) -
-                                new Date(
-                                  a.started_at
-                                )
-                            )[0].reason
-                        : "No encounters recorded"}
-                    </strong>
+            <small>
+              {emergencyProfile.patient.medbridge_id}
+            </small>
+          </div>
+        </div>
 
-                    {record.encounters.length > 0 && (
-                      <small>
-                        {new Date(
-                          record.encounters
-                            .slice()
-                            .sort(
-                              (a, b) =>
-                                new Date(
-                                  b.started_at
-                                ) -
-                                new Date(
-                                  a.started_at
-                                )
-                            )[0].started_at
-                        ).toLocaleDateString(
-                          "en-IN",
-                          {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                          }
-                        )}
+        <div className="emergency-patient-meta">
+          <div>
+            <span>Date of birth</span>
+            <strong>
+              {emergencyProfile.patient.date_of_birth ||
+                "Not recorded"}
+            </strong>
+          </div>
 
-                        {" • "}
+          <div>
+            <span>Blood group</span>
+            <strong>
+              {emergencyProfile.patient.blood_group ||
+                "Not recorded"}
+            </strong>
+          </div>
 
-                        {
-                          record.encounters
-                            .slice()
-                            .sort(
-                              (a, b) =>
-                                new Date(
-                                  b.started_at
-                                ) -
-                                new Date(
-                                  a.started_at
-                                )
-                            )[0].attending_doctor
-                        }
-                      </small>
-                    )}
-                  </div>
+          <div>
+            <span>Access expires</span>
+            <strong>
+              {new Date(
+                emergencyProfile.access.expires_at
+              ).toLocaleTimeString("en-IN", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </strong>
+          </div>
+        </div>
+      </div>
 
-                  <div className="emergency-card">
-                    <span className="emergency-card-label">
-                      LATEST OBSERVATIONS
-                    </span>
+      <div className="emergency-grid">
+        <div className="emergency-card">
+          <span className="emergency-card-label">
+            BLOOD GROUP
+          </span>
 
-                    <strong>
-                      {record.observations.length
-                        ? [
-                            ...new Map(
-                              record.observations
-                                .slice()
-                                .sort(
-                                  (a, b) =>
-                                    new Date(
-                                      b.observed_at
-                                    ) -
-                                    new Date(
-                                      a.observed_at
-                                    )
-                                )
-                                .map(
-                                  (observation) => [
-                                    observation.name,
-                                    observation,
-                                  ]
-                                )
-                            ).values(),
-                          ]
-                            .slice(0, 3)
-                            .map(
-                              (observation) =>
-                                `${observation.name}: ${observation.value} ${
-                                  observation.unit || ""
-                                }`
-                            )
-                            .join(", ")
-                        : "No observations recorded"}
-                    </strong>
-                  </div>
-                </div>
-              </div>
-            )}
-          </section>
+          <strong>
+            {emergencyProfile.patient.blood_group ||
+              "Not recorded"}
+          </strong>
+        </div>
+
+        <div className="emergency-card allergy-warning">
+          <span className="emergency-card-label">
+            ALLERGIES
+          </span>
+
+          <strong>
+            {emergencyProfile.allergies?.length
+              ? emergencyProfile.allergies
+                  .map((allergy) => {
+                    const severity = allergy.severity
+                      ? ` (${allergy.severity})`
+                      : "";
+
+                    return `${allergy.substance}${severity}`;
+                  })
+                  .join(", ")
+              : "No known allergies recorded"}
+          </strong>
+        </div>
+
+        <div className="emergency-card">
+          <span className="emergency-card-label">
+            ACTIVE MEDICATIONS
+          </span>
+
+          <strong>
+            {emergencyProfile.medications?.length
+              ? emergencyProfile.medications
+                  .map(
+                    (medication) =>
+                      medication.name ||
+                      medication.generic_name ||
+                      "Medication"
+                  )
+                  .join(", ")
+              : "No active medications recorded"}
+          </strong>
+        </div>
+
+        <div className="emergency-card">
+          <span className="emergency-card-label">
+            ACTIVE CONDITIONS
+          </span>
+
+          <strong>
+            {emergencyProfile.conditions?.length
+              ? emergencyProfile.conditions
+                  .map(
+                    (condition) =>
+                      condition.name || "Condition"
+                  )
+                  .join(", ")
+              : "No active conditions recorded"}
+          </strong>
+        </div>
+      </div>
+
+      <div className="emergency-card">
+        <span className="emergency-card-label">
+          EMERGENCY CONTACT
+        </span>
+
+        <strong>
+          {emergencyProfile.emergency_contact?.name ||
+            "Not recorded"}
+        </strong>
+
+        {emergencyProfile.emergency_contact?.phone && (
+          <small>
+            {emergencyProfile.emergency_contact.phone}
+          </small>
         )}
+      </div>
 
-        {!emergencyMode && (
+      <div className="emergency-access-notice">
+        <strong>Emergency access is audited</strong>
+
+        <span>
+          Reason: {emergencyProfile.access.reason}
+        </span>
+
+        <span>
+          This session expires automatically after 30
+          minutes or can be ended manually.
+        </span>
+      </div>
+    </div>
+  </section>
+)}
+
+        {!emergencyProfile && (
           <>
             <header className="topbar">
               <div>
@@ -1315,13 +1949,17 @@ if (currentUser?.role === "patient") {
               </div>
 
               <button
-                className="emergency-button"
-                onClick={() =>
-                  setEmergencyMode(!emergencyMode)
-                }
+                  className="emergency-button"
+                  onClick={() => {
+                       setEmergencyError("");
+                       setShowEmergencyDialog(true);
+                   }}
+                   disabled={!patient || emergencyLoading}
               >
-                Emergency Mode
-              </button>
+                   {emergencyLoading
+                       ? "Emergency Access..."
+                        : "Emergency Access"}
+               </button>
 
               <div className="doctor-profile">
                 <div className="doctor-avatar">

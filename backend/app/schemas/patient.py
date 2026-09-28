@@ -46,3 +46,51 @@ class PatientSearchResult(PatientRead):
 class PatientAccountCreate(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
+
+class EmergencyContactRead(BaseModel):
+    name: str | None = None
+    phone: str | None = None
+
+
+class EmergencyAllergyRead(BaseModel):
+    id: int
+    substance: str
+    reaction: str | None = None
+    severity: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EmergencyMedicationRead(BaseModel):
+    id: int
+    name: str
+    generic_name: str | None = None
+    strength: str | None = None
+    dose: str | None = None
+    frequency: str | None = None
+    route: str | None = None
+
+
+class EmergencyConditionRead(BaseModel):
+    id: int
+    name: str
+    clinical_status: str
+    diagnosed_on: date | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EmergencyProfileRead(BaseModel):
+    blood_group: str | None = None
+    emergency_contact: EmergencyContactRead
+    allergies: list[EmergencyAllergyRead]
+    current_medications: list[EmergencyMedicationRead]
+    active_conditions: list[EmergencyConditionRead]
+
+
+class EmergencyProfileUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    blood_group: str | None = None
+    emergency_contact_name: str | None = None
+    emergency_contact_phone: str | None = None

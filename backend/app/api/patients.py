@@ -28,6 +28,12 @@ from app.schemas.patient import (
     PatientProfileUpdate,
     PatientRead,
     PatientSearchResult,
+    EmergencyContactRead,
+    EmergencyAllergyRead,
+    EmergencyMedicationRead,
+    EmergencyConditionRead,
+    EmergencyProfileRead,
+    EmergencyProfileUpdate,
 )
 from app.schemas.clinical import (
     MappingRead,
@@ -178,10 +184,17 @@ def get_patient(
     return patient
 
 from app.schemas.patient import (
+    PatientAccountCreate,
     PatientCreate,
     PatientProfileUpdate,
     PatientRead,
     PatientSearchResult,
+    EmergencyContactRead,
+    EmergencyAllergyRead,
+    EmergencyMedicationRead,
+    EmergencyConditionRead,
+    EmergencyProfileRead,
+    EmergencyProfileUpdate,
 )
 
 @router.patch("/{medbridge_id}/profile", response_model=PatientRead)
@@ -431,5 +444,114 @@ def get_my_clinical_summary(
         observations=[
             ObservationRead.model_validate(observation)
             for observation in current_patient.observations
+        ],
+    )
+
+@router.get("/me/emergency-profile", response_model=EmergencyProfileRead)
+def get_my_emergency_profile(
+    current_patient: Patient = Depends(get_current_patient),
+):
+    active_prescriptions = [
+        prescription
+        for prescription in current_patient.prescriptions
+        if prescription.status == "active"
+    ]
+
+    active_conditions = [
+        condition
+        for condition in current_patient.conditions
+        if condition.clinical_status == "active"
+    ]
+
+    return EmergencyProfileRead(
+        blood_group=current_patient.blood_group,
+        emergency_contact=EmergencyContactRead(
+            name=current_patient.emergency_contact_name,
+            phone=current_patient.emergency_contact_phone,
+        ),
+        allergies=[
+            EmergencyAllergyRead.model_validate(allergy)
+            for allergy in current_patient.allergies
+        ],
+        current_medications=[
+            EmergencyMedicationRead(
+                id=prescription.medication.id,
+                name=prescription.medication.name,
+                generic_name=prescription.medication.generic_name,
+                strength=prescription.medication.strength,
+                dose=prescription.dose,
+                frequency=prescription.frequency,
+                route=prescription.route,
+            )
+            for prescription in active_prescriptions
+        ],
+        active_conditions=[
+            EmergencyConditionRead.model_validate(condition)
+            for condition in active_conditions
+        ],
+    )
+
+@router.patch("/me/emergency-profile", response_model=EmergencyProfileRead)
+def update_my_emergency_profile(
+    payload: EmergencyProfileUpdate,
+    db: Session = Depends(get_db),
+    current_patient: Patient = Depends(get_current_patient),
+):
+    update_data = payload.model_dump(exclude_unset=True)
+
+    for field, value in update_data.items():
+        setattr(current_patient, field, value)
+
+    log_audit_event(
+        db,
+        current_user=current_patient.user,
+        action="patient_emergency_profile_updated",
+        resource_type="patient_emergency_profile",
+        resource_id=current_patient.id,
+        patient_id=current_patient.id,
+        success=True,
+        details="Patient updated emergency profile contact information.",
+    )
+
+    db.commit()
+    db.refresh(current_patient)
+
+    active_prescriptions = [
+        prescription
+        for prescription in current_patient.prescriptions
+        if prescription.status == "active"
+    ]
+
+    active_conditions = [
+        condition
+        for condition in current_patient.conditions
+        if condition.clinical_status == "active"
+    ]
+
+    return EmergencyProfileRead(
+        blood_group=current_patient.blood_group,
+        emergency_contact=EmergencyContactRead(
+            name=current_patient.emergency_contact_name,
+            phone=current_patient.emergency_contact_phone,
+        ),
+        allergies=[
+            EmergencyAllergyRead.model_validate(allergy)
+            for allergy in current_patient.allergies
+        ],
+        current_medications=[
+            EmergencyMedicationRead(
+                id=prescription.medication.id,
+                name=prescription.medication.name,
+                generic_name=prescription.medication.generic_name,
+                strength=prescription.medication.strength,
+                dose=prescription.dose,
+                frequency=prescription.frequency,
+                route=prescription.route,
+            )
+            for prescription in active_prescriptions
+        ],
+        active_conditions=[
+            EmergencyConditionRead.model_validate(condition)
+            for condition in active_conditions
         ],
     )
