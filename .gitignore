@@ -6,3 +6,6 @@ frontend/node_modules/
 frontend/dist/
 
 backend/uploads/
+
+# Local demo seed script
+backend/seed_demo.py
