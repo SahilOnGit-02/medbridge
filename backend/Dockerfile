@@ -7,6 +7,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
 COPY alembic.ini .
 COPY alembic ./alembic
-COPY seed_render.py .
 
-CMD ["sh", "-c", "alembic upgrade head && if [ \"$RUN_DEMO_SEED\" = \"true\" ]; then python seed_render.py; fi && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000}"]
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000}"]
