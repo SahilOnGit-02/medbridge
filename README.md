@@ -178,3 +178,7 @@ Only synthetic patient data should be used in this repository and in demonstrati
 
 MedBridge is intended to demonstrate healthcare interoperability concepts. It must not be used as a substitute for clinical judgment, diagnosis, treatment, prescribing, or production medical-record infrastructure.
 
+
+## Local UX improvements
+
+See [the implementation and verification notes](docs/UX-IMPLEMENTATION.md) for the doctor and patient workflow changes, local validation, additive migration, and remaining integration requirements.
