@@ -1,0 +1,35 @@
+{
+  "success": true,
+  "data": {
+    "lifecycle": {
+      "effectiveLaunch": {
+        "browserLaunched": true,
+        "engine": "chrome",
+        "launchHash": 11677035664275010974
+      },
+      "launched": false,
+      "relaunchedBrowser": false,
+      "restartedBackground": false,
+      "restoreStatus": "not_configured",
+      "reused": true,
+      "saveStatus": "not_configured"
+    },
+    "origin": "http://localhost:5173/patients",
+    "result": {
+      "incomplete": [
+        {
+          "count": 1,
+          "id": "color-contrast"
+        }
+      ],
+      "passes": 24,
+      "url": "http://localhost:5173/patients",
+      "viewport": {
+        "height": 900,
+        "width": 320
+      },
+      "violations": []
+    }
+  },
+  "error": null
+}

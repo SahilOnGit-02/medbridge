@@ -2,9 +2,11 @@
 
 The local app at http://localhost:5173 now contains 100 fictional patient profiles. This replaces the earlier empty clinical database at the user's request. The existing doctor and patient account credentials are preserved.
 
+The latest [separate-portal and patient-first revision](PORTAL-REVISION.md) supersedes the layouts in the earlier screenshots below. Those screenshots document the initial populated-data stage.
+
 ## Doctor review
 
-- Name/MedBridge ID and optional date of birth are visible on the landing page and while reviewing a record. DOB works alone or together with the identity query.
+- Name/MedBridge ID and optional date of birth are visible on the landing page. Selecting a patient hides search and enters focused patient context. DOB works alone or together with the identity query.
 - Recently opened patients come from this account's successful record-view audit events, ordered by the latest view. Repeated views appear once. Profiles without a current hospital connection are excluded. Opening a record still checks clinical consent separately.
 - The directory displays 10 patients per page, with explicit previous/next controls and range counts. Search uses the full accessible directory, not just the visible page.
 - Each record keeps allergies, current medications and active conditions ahead of detailed history. A three-visit preview links to the full visit list. Repeated jump links reset filters and reveal the requested category.
@@ -41,7 +43,7 @@ Sign in with the existing demo patient account, then open **Records**. Its histo
 | Prescriptions | 3,637 |
 | Test results | 7,274 |
 
-The additional 99 profiles use names prefixed with **Synthetic**, MedBridge IDs `MB-SYN-001` through `MB-SYN-099`, and reserved `example.com` email addresses. These are profiles, not 99 additional sign-in accounts. Each has all five clinical categories, with different birth dates and histories. Their histories have 12 to 60 visits; the existing demo patient has 96. Synthetic hospital/source labels and a demo notice distinguish the data from real clinical information. Medication examples are fictional UI fixtures and are not treatment guidance.
+All 100 profiles now use names with **(synthetic)** at the end, including Aarav Sen for the existing patient account. The additional 99 profiles use MedBridge IDs `MB-SYN-001` through `MB-SYN-099` and reserved `example.com` email addresses. These are profiles, not 99 additional sign-in accounts. Each has all five clinical categories, with different birth dates and histories. Their histories have 12 to 60 visits; the existing demo patient has 96. Synthetic hospital/source labels and the name suffix distinguish the data from real clinical information. Medication examples are fictional UI fixtures and are not treatment guidance.
 
 The demo doctor is assigned to Synthetic Central Hospital. All 100 profiles have mappings to three synthetic hospitals and explicitly labeled simulation sharing grants. The seed does not create fictional audit activity. The recent list and access history contain actual local verification views.
 

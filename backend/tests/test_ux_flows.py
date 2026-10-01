@@ -32,7 +32,7 @@ def fixture():
 
 def headers(client, email):
     response = client.post(
-        "/auth/login", json={"email": email, "password": "UXTestOnly123!"}
+        f"/auth/{'patient' if 'patient' in email else 'doctor'}/login", json={"identifier": email, "password": "UXTestOnly123!"}
     )
     assert response.status_code == 200
     return {"Authorization": f'Bearer {response.json()["access_token"]}'}

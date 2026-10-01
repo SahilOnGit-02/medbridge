@@ -170,7 +170,7 @@ def seed(db, today=None):
             if not patient:
                 patient = Patient(
                     medbridge_id=medbridge_id,
-                    full_name=f"Synthetic {FIRST_NAMES[index % 20]} {LAST_NAMES[index // 20]}",
+                    full_name=f"{FIRST_NAMES[index % 20]} {LAST_NAMES[index // 20]} (synthetic)",
                     date_of_birth=date(
                         1946 + (index * 7) % 59, 1 + index % 12, 1 + (index * 3) % 27
                     ),
@@ -186,6 +186,20 @@ def seed(db, today=None):
                 )
                 db.add(patient)
                 db.flush()
+        if index == 0 and patient.full_name == "Demo Patient":
+            patient.full_name = "Aarav Sen (synthetic)"
+            patient_user.full_name = patient.full_name
+            patient.gender = "Male"
+            patient.blood_group = "O+"
+            patient.blood_group_source = "patient_reported"
+            patient.phone = "+12025550148"
+            patient.address = "24 Example Lane, Pune 411001 (fictional address)"
+            patient.emergency_contact_name = "Ananya Sen (synthetic)"
+            patient.emergency_contact_phone = "+12025550162"
+        elif index > 0 and patient.full_name.startswith("Synthetic "):
+            patient.full_name = (
+                f"{patient.full_name.removeprefix('Synthetic ')} (synthetic)"
+            )
         profiles.append(patient)
         existing = db.scalar(
             select(PatientHospitalMapping).where(

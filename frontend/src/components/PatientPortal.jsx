@@ -1,4 +1,3 @@
-import { bloodSourceText } from "../lib";
 import { useState } from "react";
 import { useRemote } from "../lib";
 import { Breadcrumbs, Empty, Identity, Link, Notice, State } from "./UI";
@@ -6,6 +5,7 @@ import Records, { CriticalInformation, RecentVisits } from "./Records";
 import Sharing from "./Sharing";
 import AccessHistory from "./AccessHistory";
 import EmergencyProfile from "./EmergencyProfile";
+import PatientAdministration, { ProfileDetails } from "./PatientAdministration";
 const names = {
   overview: "Overview",
   records: "Records",
@@ -13,8 +13,9 @@ const names = {
   sharing: "Sharing",
   history: "Access history",
 };
-export default function PatientPortal({ token, route }) {
+export default function PatientPortal({ token, route, onProfileSaved }) {
   const summary = useRemote("/patients/me/summary", token);
+  const [feedback, setFeedback] = useState("");
   const [patch, setPatch] = useState({});
   const page = route.split("/")[2];
   const record = summary.data && {
@@ -26,9 +27,9 @@ export default function PatientPortal({ token, route }) {
       <Breadcrumbs
         items={
           page === "overview"
-            ? [["My health"]]
+            ? [["Overview"]]
             : [
-                ["My health", "/my-health/overview"],
+                ["Overview", "/my-health/overview"],
                 [names[page] || "Page not found"],
               ]
         }
@@ -41,17 +42,19 @@ export default function PatientPortal({ token, route }) {
         {record && (
           <>
             <Identity patient={record.patient}>
-              <span className="badge">My health</span>
+              <PatientAdministration
+                token={token}
+                patient={record.patient}
+                own
+                onRefresh={(text) => {
+                  setFeedback(text);
+                  setPatch({});
+                  summary.reload();
+                  onProfileSaved?.().catch(() => {});
+                }}
+              />
             </Identity>
-            {record.hospital_mappings.some(
-              (mapping) =>
-                mapping.source_system === "Synthetic local demo dataset",
-            ) && (
-              <Notice>
-                Synthetic local demo: this fictional history is for interface
-                review, not clinical care.
-              </Notice>
-            )}
+            <Notice>{feedback}</Notice>
             {page === "overview" && (
               <>
                 <div className="overview-actions">
@@ -62,6 +65,7 @@ export default function PatientPortal({ token, route }) {
                     Review emergency details
                   </Link>
                 </div>
+                <ProfileDetails patient={record.patient} />
                 <CriticalInformation record={record} />
                 <RecentVisits record={record} patient />
                 <section className="card next-actions">
@@ -75,21 +79,6 @@ export default function PatientPortal({ token, route }) {
                     <Link to="/my-health/history">View access history →</Link>
                   </div>
                 </section>
-                <details>
-                  <summary>Patient profile</summary>
-                  <div className="disclosure-body">
-                    <p>
-                      Blood group:{" "}
-                      {record.patient.blood_group || "Not recorded"}
-                    </p>
-                    <p className="help">
-                      {bloodSourceText(record.patient.blood_group_source)}
-                    </p>
-                    <p>Phone: {record.patient.phone || "Not recorded"}</p>
-                    <p>Email: {record.patient.email || "Not recorded"}</p>
-                    <p>Address: {record.patient.address || "Not recorded"}</p>
-                  </div>
-                </details>
               </>
             )}
             {page === "records" && (
@@ -116,7 +105,7 @@ export default function PatientPortal({ token, route }) {
             {page === "history" && <AccessHistory token={token} />}
             {!names[page] && (
               <Empty title="Page not found">
-                <Link to="/my-health/overview">Return to my health</Link>
+                <Link to="/my-health/overview">Return to overview</Link>
               </Empty>
             )}
           </>

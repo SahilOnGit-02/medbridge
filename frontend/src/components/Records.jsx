@@ -83,7 +83,10 @@ function Source({ item, record, date }) {
         provider?.hospital_name ||
         "Source provider not recorded"}{" "}
       <span className="separator">•</span> {dateText(date)}
-      {provider?.source_system ? ` • ${provider.source_system}` : ""}
+      {provider?.source_system &&
+      provider.source_system !== "Synthetic local demo dataset"
+        ? ` • ${provider.source_system}`
+        : ""}
     </p>
   );
 }
@@ -206,7 +209,11 @@ export function CriticalInformation({
     ],
   ];
   return (
-    <section className="critical-section" aria-labelledby="critical-heading">
+    <section
+      id="critical-information"
+      className="critical-section"
+      aria-labelledby="critical-heading"
+    >
       <div className="section-heading">
         <div>
           <p className="eyebrow">
@@ -313,12 +320,29 @@ function HistoryRows({ items, category, record }) {
         first.
       </p>
       {items.slice(0, visible).map((item) => (
-        <RecordItem
-          key={item.id}
-          category={category}
-          item={item}
-          record={record}
-        />
+        <details className="compact-record" key={item.id}>
+          <summary>
+            <span className="compact-date">{dateText(recordedDate(item))}</span>
+            <strong>
+              {item.substance ||
+                item.medication?.name ||
+                item.name ||
+                item.reason ||
+                "Details not recorded"}
+            </strong>
+            <span className="record-meta">
+              {category === "prescriptions"
+                ? isCurrent(item)
+                  ? "Current"
+                  : item.status
+                : item.severity ||
+                  item.clinical_status ||
+                  item.encounter_type ||
+                  item.status}
+            </span>
+          </summary>
+          <RecordItem category={category} item={item} record={record} />
+        </details>
       ))}
       {visible < items.length && (
         <button onClick={() => setVisible((count) => count + 10)}>
@@ -413,6 +437,7 @@ export default function Records({ record, initialView = "categories" }) {
   const [filter, setFilter] = useState("");
   const [view, setView] = useState(initialView);
   const [year, setYear] = useState("all");
+  const [selectedCategory, setSelectedCategory] = useState("encounters");
   const [recordType, setRecordType] = useState("all");
   useEffect(() => {
     let frame;
@@ -428,6 +453,7 @@ export default function Records({ record, initialView = "categories" }) {
       setYear("all");
       setRecordType("all");
       setView("categories");
+      setSelectedCategory(targetId.replace("records-", ""));
       frame = requestAnimationFrame(() => {
         const target = document.getElementById(targetId);
         if (target) {
@@ -481,7 +507,11 @@ export default function Records({ record, initialView = "categories" }) {
     0,
   );
   return (
-    <section className="records-section" aria-labelledby="records-heading">
+    <section
+      id="record-history"
+      className="records-section"
+      aria-labelledby="records-heading"
+    >
       <div className="section-heading">
         <div>
           <h2 id="records-heading">Record details</h2>
@@ -515,7 +545,11 @@ export default function Records({ record, initialView = "categories" }) {
             <select
               id={id}
               value={recordType}
-              onChange={(event) => setRecordType(event.target.value)}
+              onChange={(event) => {
+                setRecordType(event.target.value);
+                if (event.target.value !== "all")
+                  setSelectedCategory(event.target.value);
+              }}
             >
               <option value="all">All types</option>
               {groups.map(([key, label]) => (
@@ -581,9 +615,14 @@ export default function Records({ record, initialView = "categories" }) {
               <details
                 key={`${key}-${query}-${year}`}
                 id={`records-${key}`}
-                open={filtered ? items.length > 0 : key === "prescriptions"}
+                open={selectedCategory === key}
               >
-                <summary>
+                <summary
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setSelectedCategory(selectedCategory === key ? null : key);
+                  }}
+                >
                   <span>{label}</span>
                   <span className="badge">
                     {withheld(record, key)
@@ -607,7 +646,14 @@ export default function Records({ record, initialView = "categories" }) {
               </details>
             );
           })}
-        <details id="records-documents" hidden={recordType !== "all"}>
+        <details
+          id="records-documents"
+          hidden={
+            recordType !== "all" ||
+            record.patient.medbridge_id !== "MB-A-DEMO-005" ||
+            withheld(record, "observations")
+          }
+        >
           <summary>
             <span>Documents</span>
             <span className="badge">

@@ -1,110 +1,10 @@
 import { useEffect, useState } from "react";
 import { navigate, request, useRoute } from "./lib";
-import { Field, Link, Notice, State } from "./components/UI";
+import { Link, State } from "./components/UI";
 import DoctorWorkspace from "./components/DoctorWorkspace";
 import PatientPortal from "./components/PatientPortal";
+import AccountEntry from "./components/AccountEntry";
 import "./App.css";
-function SignIn({ onLogin, message }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [show, setShow] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  async function submit(event) {
-    event.preventDefault();
-    setBusy(true);
-    setError("");
-    try {
-      const token = await request("/auth/login", null, {
-        method: "POST",
-        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
-      });
-      const user = await request("/auth/me", token.access_token);
-      onLogin(token.access_token, user);
-    } catch (failure) {
-      setError(failure.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <main id="main" className="login-layout">
-      <section className="login-story">
-        <div className="brand">
-          <span className="brand-mark" aria-hidden="true">
-            +
-          </span>{" "}
-          MedBridge
-        </div>
-        <p className="eyebrow">Connected care, clear information</p>
-        <h1>
-          Your health records.
-          <br />
-          One place to begin.
-        </h1>
-        <p>
-          Find patient information, review your own records, and manage how you
-          share them.
-        </p>
-        <div className="login-note">
-          Doctor and patient accounts use the same secure sign-in.
-        </div>
-      </section>
-      <section className="login-card" aria-labelledby="signin-heading">
-        <p className="eyebrow">Welcome back</p>
-        <h2 id="signin-heading">Sign in to MedBridge</h2>
-        <p>Use the email associated with your account.</p>
-        <Notice>{message}</Notice>
-        <form onSubmit={submit} aria-busy={busy}>
-          <Field
-            label="Email address"
-            type="email"
-            autoComplete="username"
-            required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            hint="Spaces around your email are removed automatically."
-          />
-          <Field
-            label="Password"
-            type={show ? "text" : "password"}
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            aria-describedby={error ? "login-error" : undefined}
-          />
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={show}
-              onChange={(event) => setShow(event.target.checked)}
-            />{" "}
-            Show password
-          </label>
-          {error && (
-            <p className="notice error" id="login-error" role="alert">
-              {error}
-            </p>
-          )}
-          <button className="primary full" disabled={busy}>
-            {busy ? "Signing in…" : "Sign in"}
-          </button>
-          {busy && (
-            <p role="status" className="help">
-              Connecting to your account. You will enter the portal assigned to
-              your role.
-            </p>
-          )}
-        </form>
-        <p className="help">
-          Need an account or password help? Contact your MedBridge
-          administrator.
-        </p>
-      </section>
-    </main>
-  );
-}
 export default function App() {
   const route = useRoute();
   const [token, setToken] = useState(
@@ -127,7 +27,14 @@ export default function App() {
     setToken("");
     setSession({ loading: false, user: null, error: "" });
     setMessage(reason);
-    navigate("/sign-in", true);
+    navigate(
+      session.user?.role === "patient"
+        ? "/patient/sign-in"
+        : session.user
+          ? "/doctor/sign-in"
+          : "/",
+      true,
+    );
   }
   useEffect(() => {
     if (!token || session.user) return;
@@ -179,13 +86,15 @@ export default function App() {
       history: "Access history",
     };
     document.title = user
-      ? `MedBridge | ${patientRole ? pageNames[route.split("/")[2]] || "My health" : route === "/patients" ? "Find a patient" : "Patient record"}`
-      : "MedBridge | Sign in";
+      ? `MedBridge | ${patientRole ? pageNames[route.split("/")[2]] || "Patient portal" : route === "/patients" ? "Find a patient" : "Patient record"}`
+      : "MedBridge | Portal access";
     document.querySelector("#main")?.focus({ preventScroll: true });
   }, [route, user, patientRole]);
   if (!token)
     return (
-      <SignIn
+      <AccountEntry
+        key={route}
+        route={route}
         message={message}
         onLogin={(value, account) => {
           localStorage.setItem("medbridge_access_token", value);
@@ -247,33 +156,66 @@ export default function App() {
         <div className="account">
           <span>
             <strong>{user.full_name}</strong>
-            <small>{patientRole ? "Patient portal" : "Clinical portal"}</small>
+            <small>{patientRole ? "Patient portal" : "Doctor portal"}</small>
           </span>
           <button onClick={() => signOut()}>Sign out</button>
         </div>
       </header>
-      <nav className="primary-nav" aria-label="Primary">
-        {nav.map(([label, path]) => (
-          <Link
-            key={path}
-            to={path}
-            aria-current={
-              route === path || (!patientRole && route.startsWith("/patients/"))
-                ? "page"
-                : undefined
-            }
-          >
-            {label}
-          </Link>
-        ))}
-      </nav>
-      <main id="main" tabIndex={-1} className="workspace">
-        {patientRole ? (
-          <PatientPortal token={token} route={route} />
-        ) : (
-          <DoctorWorkspace token={token} route={route} user={user} />
-        )}
-      </main>
+      <div className="portal-shell">
+        <aside className="portal-sidebar">
+          <p className="eyebrow">
+            {patientRole ? "Patient portal" : "Doctor portal"}
+          </p>
+          <nav className="primary-nav" aria-label="Primary">
+            {nav.map(([label, path]) => (
+              <Link
+                key={path}
+                to={path}
+                aria-current={
+                  route === path ||
+                  (!patientRole && route.startsWith("/patients/"))
+                    ? "page"
+                    : undefined
+                }
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
+          {!patientRole && route.match(/^\/patients\/\d+$/) && (
+            <nav className="record-nav" aria-label="Patient record sections">
+              <a href="#patient-details">Patient details</a>
+              <a href="#critical-information">Current information</a>
+              <a href="#record-history">Record history</a>
+              <a href="#provider-details">Connected providers</a>
+            </nav>
+          )}
+          {!patientRole && route === "/patients" && (
+            <nav className="record-nav" aria-label="Patient directory sections">
+              <a href="#patient-search">Search patients</a>
+              <a href="#recent-patients">Recently opened</a>
+              <a href="#patient-directory">Patient directory</a>
+              {["hospital_admin", "system_admin"].includes(user.role) && (
+                <a href="#doctor-registrations">Doctor registrations</a>
+              )}
+            </nav>
+          )}
+        </aside>
+        <main id="main" tabIndex={-1} className="workspace">
+          {patientRole ? (
+            <PatientPortal
+              token={token}
+              route={route}
+              onProfileSaved={async () => {
+                const updated = await request("/auth/me", token);
+                setSession({ loading: false, user: updated, error: "" });
+              }}
+            />
+          ) : (
+            <DoctorWorkspace token={token} route={route} user={user} />
+          )}
+        </main>
+      </div>
       <footer className="app-footer">
         MedBridge{" "}
         <span>

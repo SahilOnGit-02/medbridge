@@ -30,6 +30,15 @@ class User(Base):
         index=True,
     )
 
+    username: Mapped[str | None] = mapped_column(
+        String(60), unique=True, index=True, nullable=True
+    )
+    registration_status: Mapped[str] = mapped_column(
+        String(30), default="active", server_default="active"
+    )
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    auth_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+
     hospital_id: Mapped[int | None] = mapped_column(
         ForeignKey("hospitals.id", ondelete="SET NULL"),
         nullable=True,
@@ -63,7 +72,7 @@ class User(Base):
         back_populates="user",
         uselist=False,
     )
-    
+
     emergency_accesses = relationship(
         "EmergencyAccess",
         back_populates="user",

@@ -70,6 +70,10 @@ class Patient(Base):
         default=datetime.utcnow,
     )
 
+    @property
+    def has_account(self):
+        return self.user_id is not None
+
     user = relationship(
         "User",
         foreign_keys=[user_id],
