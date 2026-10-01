@@ -237,6 +237,11 @@ export default function Sharing({ token, providers }) {
         </div>
       </div>
       <Notice>{message}</Notice>
+      {editing !== null && (
+        <p className="help">
+          Finish or cancel this review before choosing another provider.
+        </p>
+      )}
       <State
         loading={remote.loading}
         error={remote.error}
@@ -309,7 +314,7 @@ export default function Sharing({ token, providers }) {
                     </div>
                     <div className="actions">
                       <button
-                        className="primary"
+                        disabled={editing !== null}
                         onClick={() => {
                           setEditing(provider.hospital_id);
                           setMessage("");
@@ -321,6 +326,7 @@ export default function Sharing({ token, providers }) {
                       </button>
                       {status === "Active" && (
                         <button
+                          disabled={editing !== null}
                           onClick={() => {
                             setRevoking(consent);
                             setError("");
