@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -21,14 +21,33 @@ PATIENT_VISIBLE_ACTIONS = {
     "emergency_access_viewed",
     "emergency_access_ended",
     "patient_emergency_profile_updated",
+    "patient_record_view",
+    "fhir_patient_view",
+    "fhir_record_view",
+    "patient_sharing_updated",
+    "patient_sharing_revoked",
 }
 
 
 @router.get("/me/access-history")
 def get_my_access_history(
+    limit: int = Query(default=50, ge=1, le=100),
+    before_id: int | None = Query(default=None, gt=0),
+    activity: str = Query(default="all", pattern="^(all|normal|emergency|changes)$"),
     db: Session = Depends(get_db),
     current_patient: Patient = Depends(get_current_patient),
 ):
+    actions = PATIENT_VISIBLE_ACTIONS
+    if activity == "normal":
+        actions = {"patient_record_view", "fhir_patient_view", "fhir_record_view"}
+    elif activity == "emergency":
+        actions = {action for action in actions if action.startswith("emergency_")}
+    elif activity == "changes":
+        actions = {
+            action
+            for action in actions
+            if action.startswith("patient_") and action != "patient_record_view"
+        }
     rows = db.execute(
         select(AuditLog, User, Hospital)
         .outerjoin(
@@ -41,13 +60,13 @@ def get_my_access_history(
         )
         .where(
             AuditLog.patient_id == current_patient.id,
-            AuditLog.action.in_(PATIENT_VISIBLE_ACTIONS),
+            AuditLog.action.in_(actions),
+            AuditLog.id < before_id if before_id is not None else True,
         )
         .order_by(
-            AuditLog.created_at.desc(),
             AuditLog.id.desc(),
         )
-        .limit(50)
+        .limit(limit)
     ).all()
 
     return [
@@ -61,20 +80,12 @@ def get_my_access_history(
             "created_at": audit.created_at,
             "user": {
                 "id": user.id if user else None,
-                "full_name": (
-                    user.full_name
-                    if user
-                    else "Unknown user"
-                ),
+                "full_name": (user.full_name if user else "Unknown user"),
                 "role": user.role if user else None,
             },
             "hospital": {
                 "id": hospital.id if hospital else None,
-                "name": (
-                    hospital.name
-                    if hospital
-                    else "Unknown hospital"
-                ),
+                "name": (hospital.name if hospital else "Unknown hospital"),
                 "code": hospital.code if hospital else None,
             },
         }

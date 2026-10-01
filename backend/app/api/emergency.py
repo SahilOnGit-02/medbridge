@@ -72,6 +72,33 @@ def get_active_emergency_access(
     return access
 
 
+@router.get("/me/active")
+def list_my_active_emergency_access(
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
+    if current_user.role not in {"doctor", "hospital_admin", "system_admin"}:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    rows = db.execute(
+        select(EmergencyAccess, Patient)
+        .join(Patient, Patient.id == EmergencyAccess.patient_id)
+        .where(
+            EmergencyAccess.user_id == current_user.id,
+            EmergencyAccess.status == "active",
+            EmergencyAccess.expires_at > now,
+        )
+        .order_by(EmergencyAccess.id.desc())
+    ).all()
+    return [
+        {
+            **EmergencyAccessRead.model_validate(access).model_dump(),
+            "patient_name": patient.full_name,
+            "medbridge_id": patient.medbridge_id,
+        }
+        for access, patient in rows
+    ]
+
+
 @router.post(
     "",
     response_model=EmergencyAccessRead,
@@ -113,7 +140,19 @@ def create_emergency_access(
             detail="Patient is not associated with your hospital",
         )
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    existing = db.scalar(
+        select(EmergencyAccess).where(
+            EmergencyAccess.user_id == current_user.id,
+            EmergencyAccess.status == "active",
+            EmergencyAccess.expires_at > now,
+        )
+    )
+    if existing is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="End your current emergency session before starting another",
+        )
 
     access = EmergencyAccess(
         patient_id=payload.patient_id,
@@ -197,8 +236,7 @@ def get_emergency_profile(
 
     prescriptions = list(
         db.scalars(
-            select(Prescription)
-            .where(
+            select(Prescription).where(
                 Prescription.patient_id == patient.id,
                 Prescription.status == "active",
             )
@@ -213,7 +251,13 @@ def get_emergency_profile(
         if medication is not None:
             medications.append(
                 {
-                    "id": medication.id,
+                    "id": prescription.id,
+                    "medication_id": medication.id,
+                    "dose": prescription.dose,
+                    "frequency": prescription.frequency,
+                    "route": prescription.route,
+                    "started_on": prescription.started_on,
+                    "ended_on": prescription.ended_on,
                     "name": medication.name,
                     "generic_name": medication.generic_name,
                     "form": medication.form,
@@ -249,6 +293,7 @@ def get_emergency_profile(
             "full_name": patient.full_name,
             "date_of_birth": patient.date_of_birth,
             "blood_group": patient.blood_group,
+            "blood_group_source": patient.blood_group_source,
         },
         "allergies": [
             {
