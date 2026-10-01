@@ -45,6 +45,10 @@ class PatientSearchResult(PatientRead):
     pass
 
 
+class RecentPatientRead(PatientSearchResult):
+    last_viewed_at: datetime
+
+
 class PatientAccountCreate(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)

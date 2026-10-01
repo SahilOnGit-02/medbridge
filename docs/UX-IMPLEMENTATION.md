@@ -1,6 +1,6 @@
 # MedBridge local UX implementation
 
-Implemented on the local `codex/medbridge-ux-improvements` branch. No remote push or deployment was performed.
+Developed and tested locally on `codex/medbridge-ux-improvements`. Deployment is not part of these implementation checks. The later populated-data review is documented in [POPULATED-DEMO.md](POPULATED-DEMO.md).
 
 ## Completed stages
 
@@ -39,7 +39,7 @@ The following screens use the isolated synthetic dataset.
 - Keyboard checks verified emergency-dialog initial focus on the reason, Tab/Shift+Tab wrapping, Escape and return to the initiating control.
 - Simulated network failures retained emergency reasons, granted sessions, end controls and patient emergency-form values. Retry saved and displayed normalized contact values.
 - Doctor records, patient records and patient history reflowed at **320px without horizontal overflow**. Doctor records also passed a **200% CSS magnification** check. Native browser zoom and screen-reader testing remain manual follow-up checks.
-- Both original local accounts were checked against the normal local API. No hospital assignments, clinical records or sharing grants were seeded into that database.
+- Both original local accounts were checked against the normal local API. The initial empty-state verification used no hospital assignments, clinical records or sharing grants. The user subsequently authorized a populated local dataset, documented in [POPULATED-DEMO.md](POPULATED-DEMO.md).
 
 Screenshots and structured checks are in [ux-verification](ux-verification/). Populated screenshots use clearly named synthetic patients in a disposable test database, not your local patient account.
 

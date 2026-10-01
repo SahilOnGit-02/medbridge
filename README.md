@@ -182,3 +182,5 @@ MedBridge is intended to demonstrate healthcare interoperability concepts. It mu
 ## Local UX improvements
 
 See [the implementation and verification notes](docs/UX-IMPLEMENTATION.md) for the doctor and patient workflow changes, local validation, additive migration, and remaining integration requirements.
+
+The [populated demo review](docs/POPULATED-DEMO.md) covers visible DOB search, recent patients, 100 synthetic profiles and long-history layouts for both portals. Demo seeding is explicit and local only.

@@ -3,13 +3,14 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.clinical import require_patient_hospital_access
 from app.api.deps import get_current_patient, get_current_user
 from app.db.session import get_db
 from app.models.patient import Patient
+from app.models.audit import AuditLog
 from app.core.audit import log_audit_event
 from app.core.security import hash_password
 from app.models.user import User
@@ -28,6 +29,7 @@ from app.schemas.patient import (
     PatientProfileUpdate,
     PatientRead,
     PatientSearchResult,
+    RecentPatientRead,
     EmergencyContactRead,
     EmergencyAllergyRead,
     EmergencyMedicationRead,
@@ -89,6 +91,53 @@ def list_patients(
     query = query.order_by(Patient.full_name.asc())
 
     return db.scalars(query).unique().all()
+
+
+@router.get("/recent", response_model=list[RecentPatientRead])
+def recent_patients(
+    limit: int = Query(default=6, ge=1, le=20),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    if current_user.role not in {"doctor", "hospital_admin", "system_admin"}:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    viewed = (
+        select(
+            AuditLog.patient_id,
+            func.max(AuditLog.created_at).label("last_viewed_at"),
+        )
+        .where(
+            AuditLog.user_id == current_user.id,
+            AuditLog.success.is_(True),
+            AuditLog.action.in_(
+                ["patient_record_view", "fhir_patient_view", "fhir_record_view"]
+            ),
+        )
+        .group_by(AuditLog.patient_id)
+        .subquery()
+    )
+    query = select(Patient, viewed.c.last_viewed_at).join(
+        viewed, viewed.c.patient_id == Patient.id
+    )
+    if current_user.role != "system_admin":
+        query = query.where(
+            select(PatientHospitalMapping.id)
+            .where(
+                PatientHospitalMapping.patient_id == Patient.id,
+                PatientHospitalMapping.hospital_id == current_user.hospital_id,
+            )
+            .exists()
+        )
+    rows = db.execute(
+        query.order_by(viewed.c.last_viewed_at.desc(), Patient.id.desc()).limit(limit)
+    ).all()
+    return [
+        RecentPatientRead(
+            **PatientSearchResult.model_validate(patient).model_dump(),
+            last_viewed_at=last_viewed_at,
+        )
+        for patient, last_viewed_at in rows
+    ]
 
 
 @router.post("", response_model=PatientRead, status_code=201)

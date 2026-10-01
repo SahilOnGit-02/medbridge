@@ -1,8 +1,8 @@
 import { bloodSourceText } from "../lib";
 import { useState } from "react";
 import { useRemote } from "../lib";
-import { Breadcrumbs, Empty, Identity, Link, State } from "./UI";
-import Records, { CriticalInformation } from "./Records";
+import { Breadcrumbs, Empty, Identity, Link, Notice, State } from "./UI";
+import Records, { CriticalInformation, RecentVisits } from "./Records";
 import Sharing from "./Sharing";
 import AccessHistory from "./AccessHistory";
 import EmergencyProfile from "./EmergencyProfile";
@@ -43,6 +43,15 @@ export default function PatientPortal({ token, route }) {
             <Identity patient={record.patient}>
               <span className="badge">My health</span>
             </Identity>
+            {record.hospital_mappings.some(
+              (mapping) =>
+                mapping.source_system === "Synthetic local demo dataset",
+            ) && (
+              <Notice>
+                Synthetic local demo: this fictional history is for interface
+                review, not clinical care.
+              </Notice>
+            )}
             {page === "overview" && (
               <>
                 <div className="overview-actions">
@@ -54,6 +63,7 @@ export default function PatientPortal({ token, route }) {
                   </Link>
                 </div>
                 <CriticalInformation record={record} />
+                <RecentVisits record={record} patient />
                 <section className="card next-actions">
                   <h2>You control record sharing</h2>
                   <p>
@@ -85,10 +95,11 @@ export default function PatientPortal({ token, route }) {
             {page === "records" && (
               <>
                 <p className="page-intro">
-                  Your available records, organized by category. Missing entries
-                  do not confirm that a condition or allergy is absent.
+                  Your available history, newest first. Switch to categories or
+                  filter by year and record type. Missing entries do not confirm
+                  that a condition or allergy is absent.
                 </p>
-                <Records record={record} />
+                <Records record={record} initialView="timeline" />
               </>
             )}
             {page === "emergency" && (

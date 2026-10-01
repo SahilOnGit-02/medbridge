@@ -6,6 +6,8 @@ from app.main import app
 from app.core.audit import log_audit_event
 from app.models.consent import PatientHospitalConsent
 from app.models.user import User
+from app.models.patient import Patient
+from app.models.clinical import PatientHospitalMapping
 from tests.ux_fixtures import create_fixture_database
 
 
@@ -298,3 +300,68 @@ def test_clinician_entered_blood_group_has_separate_provenance(fixture):
     assert response.status_code == 200
     assert response.json()["blood_group_source"] == "clinician_recorded"
     assert response.json()["identity_verification_status"] is None
+
+
+def test_recent_patients_are_unique_owned_successful_and_currently_accessible(fixture):
+    client, sessions = fixture
+    doctor = headers(client, "doctor.ux@example.com")
+    patient = headers(client, "patient.ux@example.com")
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    with sessions() as db:
+        actor = db.get(User, 1)
+        for patient_id, days, success in [
+            (1, 3, True),
+            (2, 2, True),
+            (1, 1, True),
+            (2, 0, False),
+        ]:
+            event = log_audit_event(
+                db,
+                current_user=actor,
+                action="patient_record_view",
+                resource_type="clinical_record",
+                patient_id=patient_id,
+                success=success,
+            )
+            event.created_at = now - timedelta(days=days)
+        log_audit_event(
+            db,
+            current_user=db.get(User, 2),
+            action="patient_record_view",
+            resource_type="clinical_record",
+            patient_id=2,
+        )
+        db.commit()
+    recent = client.get("/patients/recent", headers=doctor)
+    assert recent.status_code == 200
+    assert [row["id"] for row in recent.json()] == [1, 2]
+    assert datetime.fromisoformat(
+        recent.json()[0]["last_viewed_at"]
+    ) == now - timedelta(days=1)
+    assert len(client.get("/patients/recent?limit=1", headers=doctor).json()) == 1
+    assert client.get("/patients/recent", headers=patient).status_code == 403
+    with sessions() as db:
+        db.query(PatientHospitalMapping).filter_by(patient_id=1, hospital_id=1).delete()
+        db.commit()
+    assert [
+        row["id"] for row in client.get("/patients/recent", headers=doctor).json()
+    ] == [2]
+
+
+def test_visible_dob_search_can_be_used_alone_or_with_identity(fixture):
+    client, sessions = fixture
+    doctor = headers(client, "doctor.ux@example.com")
+    with sessions() as db:
+        dob = db.get(Patient, 1).date_of_birth.isoformat()
+    assert [
+        row["id"]
+        for row in client.get(
+            f"/patients/search?date_of_birth={dob}", headers=doctor
+        ).json()
+    ] == [1]
+    assert (
+        client.get(
+            f"/patients/search?date_of_birth={dob}&q=MB-UX-TEST-2", headers=doctor
+        ).json()
+        == []
+    )

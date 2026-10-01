@@ -1,16 +1,45 @@
 import { bloodSourceText } from "../lib";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { dateText, navigate, request, useRemote } from "../lib";
 import { Breadcrumbs, Empty, Field, Identity, Link, Notice, State } from "./UI";
-import Records, { CriticalInformation } from "./Records";
+import Records, { CriticalInformation, RecentVisits } from "./Records";
 import EmergencyAccess from "./EmergencyAccess";
 import PatientAdministration from "./PatientAdministration";
-function PatientSearch({ token, initialPatients, onSelect, compact = false }) {
+function PatientCard({ patient, onSelect, recent = false }) {
+  return (
+    <article className="patient-result">
+      <div>
+        <h3>{patient.full_name}</h3>
+        <p>Date of birth: {dateText(patient.date_of_birth)}</p>
+        <p className="record-meta">{patient.medbridge_id}</p>
+        {recent && (
+          <p className="record-meta">
+            Opened: {dateText(patient.last_viewed_at, true)}
+          </p>
+        )}
+      </div>
+      <button
+        onClick={() => onSelect(patient)}
+        aria-label={`Open record for ${patient.full_name}, ${patient.medbridge_id}`}
+      >
+        Open record
+      </button>
+    </article>
+  );
+}
+function PatientSearch({
+  token,
+  initialPatients,
+  onSelect,
+  recent,
+  compact = false,
+}) {
   const [query, setQuery] = useState("");
   const [dob, setDob] = useState("");
   const [results, setResults] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(0);
   const sequence = useRef(0);
   async function search(event) {
     event.preventDefault();
@@ -24,7 +53,10 @@ function PatientSearch({ token, initialPatients, onSelect, compact = false }) {
       const data = params.size
         ? await request(`/patients/search?${params}`, token)
         : initialPatients;
-      if (sequence.current === run) setResults(data);
+      if (sequence.current === run) {
+        setResults(data);
+        setPage(0);
+      }
     } catch (failure) {
       if (sequence.current === run) setError(failure.message);
     } finally {
@@ -44,17 +76,19 @@ function PatientSearch({ token, initialPatients, onSelect, compact = false }) {
           onChange={(event) => setQuery(event.target.value)}
           type="search"
           placeholder="Search your accessible patients"
-          hint="Compare name, date of birth and ID before opening a record."
+          hint={
+            compact
+              ? undefined
+              : "Compare name, date of birth and ID before opening a record."
+          }
         />
-        <details className="advanced-search">
-          <summary>More search options</summary>
-          <Field
-            label="Date of birth"
-            type="date"
-            value={dob}
-            onChange={(event) => setDob(event.target.value)}
-          />
-        </details>
+        <Field
+          label="Date of birth (optional)"
+          type="date"
+          value={dob}
+          onChange={(event) => setDob(event.target.value)}
+          hint={compact ? undefined : "Use on its own or with a name or ID."}
+        />
         <div className="actions">
           <button className="primary" disabled={busy}>
             {busy ? "Searching…" : "Find patient"}
@@ -66,6 +100,7 @@ function PatientSearch({ token, initialPatients, onSelect, compact = false }) {
               setQuery("");
               setDob("");
               setResults(null);
+              setPage(0);
               setError("");
               setBusy(false);
             }}
@@ -75,50 +110,117 @@ function PatientSearch({ token, initialPatients, onSelect, compact = false }) {
         </div>
       </form>
       <Notice error>{error}</Notice>
-      <p role="status" className="result-count">
-        {busy
-          ? "Searching accessible patients…"
-          : `${patients.length} ${results ? "matching" : "accessible"} patients`}
-      </p>
-      {patients.length ? (
-        <div className="patient-list">
-          {patients.map((patient) => (
-            <article key={patient.id} className="patient-result">
-              <div>
-                <h3>{patient.full_name}</h3>
-                <p>Date of birth: {dateText(patient.date_of_birth)}</p>
-                <p className="record-meta">{patient.medbridge_id}</p>
-              </div>
-              <button
-                onClick={() => onSelect(patient)}
-                aria-label={`Open record for ${patient.full_name}, ${patient.medbridge_id}`}
-              >
-                Open record <span aria-hidden="true">→</span>
-              </button>
-            </article>
-          ))}
-        </div>
-      ) : (
-        <Empty
-          title={
-            results
-              ? "No patients match this search"
-              : "No accessible patients yet"
-          }
+      {results === null && recent && !compact && (
+        <section
+          className="recent-patients"
+          aria-labelledby="recent-patients-heading"
         >
-          {results
-            ? "Check the name or MedBridge ID, remove the date filter, or clear the search."
-            : "Patients appear here after your hospital assignment and patient connections are configured."}
-        </Empty>
+          <h2 id="recent-patients-heading">Recently opened patients</h2>
+          <p className="help">
+            Your most recent successful record views. Confirm identity before
+            reopening.
+          </p>
+          <State
+            loading={recent.loading}
+            error={recent.error}
+            retry={recent.reload}
+          >
+            {recent.data?.length ? (
+              <div className="recent-patient-grid">
+                {recent.data.map((patient) => (
+                  <PatientCard
+                    key={patient.id}
+                    patient={patient}
+                    onSelect={onSelect}
+                    recent
+                  />
+                ))}
+              </div>
+            ) : (
+              <p>
+                No records opened yet. Find a patient below; opened records will
+                appear here.
+              </p>
+            )}
+          </State>
+        </section>
+      )}
+      {(!compact || results !== null) && (
+        <>
+          <h2>
+            {results === null ? "All accessible patients" : "Search results"}
+          </h2>
+          <p role="status" className="result-count">
+            {busy
+              ? "Searching accessible patients…"
+              : `${patients.length} ${results ? "matching" : "accessible"} patients`}
+          </p>
+          {patients.length ? (
+            <div className="patient-list">
+              {patients.slice(page * 10, (page + 1) * 10).map((patient) => (
+                <PatientCard
+                  key={patient.id}
+                  patient={patient}
+                  onSelect={onSelect}
+                />
+              ))}
+              {patients.length > 10 && (
+                <nav
+                  className="list-pagination"
+                  aria-label="Patient directory pages"
+                >
+                  <button
+                    disabled={page === 0}
+                    onClick={() => setPage((value) => value - 1)}
+                  >
+                    Previous patients
+                  </button>
+                  <span role="status">
+                    {page * 10 + 1}–{Math.min((page + 1) * 10, patients.length)}{" "}
+                    of {patients.length}
+                  </span>
+                  <button
+                    disabled={(page + 1) * 10 >= patients.length}
+                    onClick={() => setPage((value) => value + 1)}
+                  >
+                    Next patients
+                  </button>
+                </nav>
+              )}
+            </div>
+          ) : (
+            <Empty
+              title={
+                results
+                  ? "No patients match this search"
+                  : "No accessible patients yet"
+              }
+            >
+              {results
+                ? "Check the name or MedBridge ID, remove the date filter, or clear the search."
+                : "Patients appear here after your hospital assignment and patient connections are configured."}
+            </Empty>
+          )}
+        </>
       )}
     </section>
   );
 }
-function PatientRecord({ id, token, knownPatient, onEmergency, onChanged }) {
+function PatientRecord({
+  id,
+  token,
+  knownPatient,
+  onEmergency,
+  onChanged,
+  onViewed,
+}) {
   const [feedback, setFeedback] = useState("");
   const remote = useRemote(`/clinical/patients/${id}/record`, token);
   const record = remote.data;
   const patient = record?.patient || knownPatient;
+  useEffect(() => {
+    if (record) onViewed();
+  }, [record, onViewed]);
   return (
     <>
       <Breadcrumbs
@@ -128,6 +230,9 @@ function PatientRecord({ id, token, knownPatient, onEmergency, onChanged }) {
         ]}
       />
       <Identity patient={patient}>
+        {record?.hospital_mappings?.some(
+          (mapping) => mapping.source_system === "Synthetic local demo dataset",
+        ) && <span className="badge">Synthetic demo</span>}
         <span className="badge">
           {record
             ? record.access?.mode === "administrative"
@@ -159,6 +264,7 @@ function PatientRecord({ id, token, knownPatient, onEmergency, onChanged }) {
         {record && (
           <>
             <CriticalInformation record={record} doctor />
+            <RecentVisits record={record} />
             <Records key={id} record={record} />
             <details className="administrative">
               <summary>Patient and provider details</summary>
@@ -229,6 +335,7 @@ function PatientRecord({ id, token, knownPatient, onEmergency, onChanged }) {
 }
 export default function DoctorWorkspace({ token, route, user }) {
   const directory = useRemote("/patients", token);
+  const recent = useRemote("/patients/recent?limit=6", token);
   const [emergencyStatus, setEmergencyStatus] = useState({
     checking: true,
     activePatientId: null,
@@ -264,8 +371,7 @@ export default function DoctorWorkspace({ token, route, user }) {
         <>
           <section className={id ? "switch-patient" : "directory-heading"}>
             {id ? (
-              <details>
-                <summary>Find another patient</summary>
+              <div className="card">
                 <State
                   loading={directory.loading}
                   error={directory.error}
@@ -278,7 +384,7 @@ export default function DoctorWorkspace({ token, route, user }) {
                     compact
                   />
                 </State>
-              </details>
+              </div>
             ) : (
               <>
                 <p className="eyebrow">Clinical workspace</p>
@@ -293,6 +399,14 @@ export default function DoctorWorkspace({ token, route, user }) {
                     administrator to connect your hospital and its patients.
                   </Notice>
                 )}
+                {directory.data?.some((row) =>
+                  row.medbridge_id.startsWith("MB-SYN-"),
+                ) && (
+                  <Notice>
+                    Synthetic local demo: fictional patient histories for
+                    interface review.
+                  </Notice>
+                )}
               </>
             )}
           </section>
@@ -304,6 +418,7 @@ export default function DoctorWorkspace({ token, route, user }) {
               knownPatient={patient}
               onEmergency={setEmergencyPatient}
               onChanged={directory.reload}
+              onViewed={recent.reload}
             />
           ) : (
             <State
@@ -316,6 +431,7 @@ export default function DoctorWorkspace({ token, route, user }) {
                   token={token}
                   initialPatients={directory.data}
                   onSelect={open}
+                  recent={recent}
                 />
               </div>
             </State>
