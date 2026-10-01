@@ -3,13 +3,14 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.clinical import require_patient_hospital_access
 from app.api.deps import get_current_patient, get_current_user
 from app.db.session import get_db
 from app.models.patient import Patient
+from app.models.audit import AuditLog
 from app.core.audit import log_audit_event
 from app.core.security import hash_password
 from app.models.user import User
@@ -28,6 +29,7 @@ from app.schemas.patient import (
     PatientProfileUpdate,
     PatientRead,
     PatientSearchResult,
+    RecentPatientRead,
     EmergencyContactRead,
     EmergencyAllergyRead,
     EmergencyMedicationRead,
@@ -46,6 +48,7 @@ from app.schemas.clinical import (
     MedicationRead,
     PrescriptionRead,
 )
+
 router = APIRouter(prefix="/patients", tags=["patients"])
 UPLOAD_DIR = Path("uploads/patients")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -58,11 +61,13 @@ ALLOWED_PROFILE_PHOTO_TYPES = {
     "image/webp",
 }
 
+
 @router.get("/me", response_model=PatientRead)
 def get_my_patient_profile(
     current_patient: Patient = Depends(get_current_patient),
 ):
     return current_patient
+
 
 @router.get("", response_model=list[PatientSearchResult])
 def list_patients(
@@ -81,13 +86,59 @@ def list_patients(
         query = query.join(
             PatientHospitalMapping,
             PatientHospitalMapping.patient_id == Patient.id,
-        ).where(
-            PatientHospitalMapping.hospital_id == current_user.hospital_id
-        )
+        ).where(PatientHospitalMapping.hospital_id == current_user.hospital_id)
 
     query = query.order_by(Patient.full_name.asc())
 
     return db.scalars(query).unique().all()
+
+
+@router.get("/recent", response_model=list[RecentPatientRead])
+def recent_patients(
+    limit: int = Query(default=6, ge=1, le=20),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    if current_user.role not in {"doctor", "hospital_admin", "system_admin"}:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    viewed = (
+        select(
+            AuditLog.patient_id,
+            func.max(AuditLog.created_at).label("last_viewed_at"),
+        )
+        .where(
+            AuditLog.user_id == current_user.id,
+            AuditLog.success.is_(True),
+            AuditLog.action.in_(
+                ["patient_record_view", "fhir_patient_view", "fhir_record_view"]
+            ),
+        )
+        .group_by(AuditLog.patient_id)
+        .subquery()
+    )
+    query = select(Patient, viewed.c.last_viewed_at).join(
+        viewed, viewed.c.patient_id == Patient.id
+    )
+    if current_user.role != "system_admin":
+        query = query.where(
+            select(PatientHospitalMapping.id)
+            .where(
+                PatientHospitalMapping.patient_id == Patient.id,
+                PatientHospitalMapping.hospital_id == current_user.hospital_id,
+            )
+            .exists()
+        )
+    rows = db.execute(
+        query.order_by(viewed.c.last_viewed_at.desc(), Patient.id.desc()).limit(limit)
+    ).all()
+    return [
+        RecentPatientRead(
+            **PatientSearchResult.model_validate(patient).model_dump(),
+            last_viewed_at=last_viewed_at,
+        )
+        for patient, last_viewed_at in rows
+    ]
+
 
 @router.post("", response_model=PatientRead, status_code=201)
 def create_patient(
@@ -153,9 +204,7 @@ def search_patients(
         query = query.join(
             PatientHospitalMapping,
             PatientHospitalMapping.patient_id == Patient.id,
-        ).where(
-            PatientHospitalMapping.hospital_id == current_user.hospital_id
-        )
+        ).where(PatientHospitalMapping.hospital_id == current_user.hospital_id)
 
     query = query.order_by(Patient.full_name.asc())
 
@@ -168,9 +217,7 @@ def get_patient(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    patient = db.scalar(
-        select(Patient).where(Patient.medbridge_id == medbridge_id)
-    )
+    patient = db.scalar(select(Patient).where(Patient.medbridge_id == medbridge_id))
 
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
@@ -182,6 +229,7 @@ def get_patient(
     )
 
     return patient
+
 
 from app.schemas.patient import (
     PatientAccountCreate,
@@ -197,6 +245,7 @@ from app.schemas.patient import (
     EmergencyProfileUpdate,
 )
 
+
 @router.patch("/{medbridge_id}/profile", response_model=PatientRead)
 def update_patient_profile(
     medbridge_id: str,
@@ -204,9 +253,7 @@ def update_patient_profile(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    patient = db.scalar(
-        select(Patient).where(Patient.medbridge_id == medbridge_id)
-    )
+    patient = db.scalar(select(Patient).where(Patient.medbridge_id == medbridge_id))
 
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
@@ -219,6 +266,13 @@ def update_patient_profile(
 
     update_data = payload.model_dump(exclude_unset=True)
 
+    if (
+        "blood_group" in update_data
+        and update_data["blood_group"] != patient.blood_group
+    ):
+        patient.blood_group_source = (
+            "clinician_recorded" if update_data["blood_group"] else None
+        )
     for field, value in update_data.items():
         setattr(patient, field, value)
 
@@ -234,9 +288,7 @@ def verify_patient_identity(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    patient = db.scalar(
-        select(Patient).where(Patient.medbridge_id == medbridge_id)
-    )
+    patient = db.scalar(select(Patient).where(Patient.medbridge_id == medbridge_id))
 
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
@@ -267,6 +319,7 @@ def verify_patient_identity(
 
     return patient
 
+
 @router.post("/{medbridge_id}/create-account", response_model=PatientRead)
 def create_patient_account(
     medbridge_id: str,
@@ -274,9 +327,7 @@ def create_patient_account(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    patient = db.scalar(
-        select(Patient).where(Patient.medbridge_id == medbridge_id)
-    )
+    patient = db.scalar(select(Patient).where(Patient.medbridge_id == medbridge_id))
 
     if not patient:
         raise HTTPException(
@@ -302,9 +353,7 @@ def create_patient_account(
             detail="Patient already has an account",
         )
 
-    existing_user = db.scalar(
-        select(User).where(User.email == payload.email)
-    )
+    existing_user = db.scalar(select(User).where(User.email == payload.email))
 
     if existing_user:
         raise HTTPException(
@@ -342,6 +391,7 @@ def create_patient_account(
 
     return patient
 
+
 @router.post("/{medbridge_id}/photo", response_model=PatientRead)
 async def upload_patient_photo(
     medbridge_id: str,
@@ -349,9 +399,7 @@ async def upload_patient_photo(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    patient = db.scalar(
-        select(Patient).where(Patient.medbridge_id == medbridge_id)
-    )
+    patient = db.scalar(select(Patient).where(Patient.medbridge_id == medbridge_id))
 
     if not patient:
         raise HTTPException(
@@ -409,6 +457,7 @@ async def upload_patient_photo(
 
     return patient
 
+
 @router.get("/me/summary", response_model=UnifiedClinicalRecord)
 def get_my_clinical_summary(
     db: Session = Depends(get_db),
@@ -423,9 +472,12 @@ def get_my_clinical_summary(
     ]
 
     return UnifiedClinicalRecord(
+        access={"mode": "patient", "withheld_categories": []},
         patient=PatientRead.model_validate(current_patient),
         hospital_mappings=[
-            MappingRead.model_validate(mapping)
+            MappingRead.model_validate(mapping).model_copy(
+                update={"hospital_name": mapping.hospital.name}
+            )
             for mapping in current_patient.hospital_mappings
         ],
         encounters=[
@@ -437,8 +489,7 @@ def get_my_clinical_summary(
             for condition in current_patient.conditions
         ],
         allergies=[
-            AllergyRead.model_validate(allergy)
-            for allergy in current_patient.allergies
+            AllergyRead.model_validate(allergy) for allergy in current_patient.allergies
         ],
         prescriptions=prescriptions,
         observations=[
@@ -446,6 +497,7 @@ def get_my_clinical_summary(
             for observation in current_patient.observations
         ],
     )
+
 
 @router.get("/me/emergency-profile", response_model=EmergencyProfileRead)
 def get_my_emergency_profile(
@@ -464,6 +516,8 @@ def get_my_emergency_profile(
     ]
 
     return EmergencyProfileRead(
+        blood_group_source=current_patient.blood_group_source,
+        updated_at=current_patient.emergency_details_updated_at,
         blood_group=current_patient.blood_group,
         emergency_contact=EmergencyContactRead(
             name=current_patient.emergency_contact_name,
@@ -491,6 +545,7 @@ def get_my_emergency_profile(
         ],
     )
 
+
 @router.patch("/me/emergency-profile", response_model=EmergencyProfileRead)
 def update_my_emergency_profile(
     payload: EmergencyProfileUpdate,
@@ -498,6 +553,13 @@ def update_my_emergency_profile(
     current_patient: Patient = Depends(get_current_patient),
 ):
     update_data = payload.model_dump(exclude_unset=True)
+    if "blood_group" in update_data:
+        current_patient.blood_group_source = (
+            "patient_reported" if update_data["blood_group"] else None
+        )
+    current_patient.emergency_details_updated_at = datetime.now(timezone.utc).replace(
+        tzinfo=None
+    )
 
     for field, value in update_data.items():
         setattr(current_patient, field, value)
@@ -529,6 +591,8 @@ def update_my_emergency_profile(
     ]
 
     return EmergencyProfileRead(
+        blood_group_source=current_patient.blood_group_source,
+        updated_at=current_patient.emergency_details_updated_at,
         blood_group=current_patient.blood_group,
         emergency_contact=EmergencyContactRead(
             name=current_patient.emergency_contact_name,

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from app.core.audit import log_audit_event
 
@@ -19,7 +19,9 @@ def login(
     db: Session = Depends(get_db),
 ):
     user = db.scalar(
-        select(User).where(User.email == credentials.email)
+        select(User).where(
+            func.lower(User.email) == str(credentials.email).strip().lower()
+        )
     )
 
     if user is None or not verify_password(
@@ -52,7 +54,6 @@ def login(
     db.commit()
 
     return TokenResponse(access_token=access_token)
-
 
 
 @router.get("/me")

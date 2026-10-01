@@ -2,13 +2,16 @@ from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict
 from app.schemas.patient import PatientRead
 
+
 class HospitalCreate(BaseModel):
     code: str
     name: str
 
+
 class HospitalRead(HospitalCreate):
     id: int
     model_config = ConfigDict(from_attributes=True)
+
 
 class MappingCreate(BaseModel):
     patient_id: int
@@ -16,9 +19,12 @@ class MappingCreate(BaseModel):
     external_patient_id: str
     source_system: str | None = None
 
+
 class MappingRead(MappingCreate):
     id: int
+    hospital_name: str | None = None
     model_config = ConfigDict(from_attributes=True)
+
 
 class EncounterCreate(BaseModel):
     patient_id: int
@@ -29,9 +35,12 @@ class EncounterCreate(BaseModel):
     ended_at: datetime | None = None
     attending_doctor: str | None = None
 
+
 class EncounterRead(EncounterCreate):
     id: int
+    hospital_name: str | None = None
     model_config = ConfigDict(from_attributes=True)
+
 
 class ConditionCreate(BaseModel):
     patient_id: int
@@ -42,9 +51,12 @@ class ConditionCreate(BaseModel):
     diagnosed_on: date | None = None
     notes: str | None = None
 
+
 class ConditionRead(ConditionCreate):
     id: int
+    source_hospital_name: str | None = None
     model_config = ConfigDict(from_attributes=True)
+
 
 class AllergyCreate(BaseModel):
     patient_id: int
@@ -54,9 +66,11 @@ class AllergyCreate(BaseModel):
     verified: bool = False
     recorded_on: date | None = None
 
+
 class AllergyRead(AllergyCreate):
     id: int
     model_config = ConfigDict(from_attributes=True)
+
 
 class MedicationCreate(BaseModel):
     name: str
@@ -64,9 +78,11 @@ class MedicationCreate(BaseModel):
     form: str | None = None
     strength: str | None = None
 
+
 class MedicationRead(MedicationCreate):
     id: int
     model_config = ConfigDict(from_attributes=True)
+
 
 class PrescriptionCreate(BaseModel):
     patient_id: int
@@ -83,6 +99,7 @@ class PrescriptionCreate(BaseModel):
 
 class PrescriptionRead(PrescriptionCreate):
     id: int
+    source_hospital_name: str | None = None
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -99,6 +116,7 @@ class ObservationCreate(BaseModel):
 
 class ObservationRead(ObservationCreate):
     id: int
+    source_hospital_name: str | None = None
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -106,7 +124,14 @@ class UnifiedPrescriptionRead(PrescriptionRead):
     medication: MedicationRead | None = None
 
 
+class RecordAccessRead(BaseModel):
+    mode: str
+    withheld_categories: list[str] = []
+    expires_at: datetime | None = None
+
+
 class UnifiedClinicalRecord(BaseModel):
+    access: RecordAccessRead | None = None
     patient: PatientRead
     hospital_mappings: list[MappingRead]
     encounters: list[EncounterRead]
