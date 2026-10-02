@@ -6,6 +6,7 @@ from app.api.patients import router as patients_router
 from app.api.clinical import router as clinical_router
 from app.api.fhir import router as fhir_router
 from app.api.auth import router as auth_router
+from app.api.accounts import router as accounts_router
 from app.api.consents import router as consents_router
 from app.api.emergency import router as emergency_router
 from app.api.patient_access import router as patient_access_router
@@ -17,10 +18,10 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "https://medbridge-theta-five.vercel.app",
-],
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "https://medbridge-theta-five.vercel.app",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -40,3 +41,7 @@ app.include_router(consents_router)
 app.include_router(emergency_router)
 app.include_router(patient_access_router)
 app.include_router(medical_reports_router)
+app.include_router(accounts_router)
+app.include_router(patient_access_router)
+app.include_router(medical_reports_router)
+app.include_router(accounts_router)

@@ -15,3 +15,4 @@ from app.models.consent import PatientHospitalConsent
 from app.models.audit import AuditLog
 from app.models.emergency import EmergencyAccess
 from app.models.medical_report import MedicalReport
+from app.models.account import AccountToken, DoctorRegistration, AccountThrottle

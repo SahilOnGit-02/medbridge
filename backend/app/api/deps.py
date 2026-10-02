@@ -26,7 +26,7 @@ def get_current_user(
 
     user = db.get(User, user_id)
 
-    if user is None or not user.is_active:
+    if user is None or not user.is_active or payload.get("av", 0) != user.auth_version:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User is inactive or does not exist",
@@ -35,18 +35,20 @@ def get_current_user(
 
     return user
 
+
 def get_current_patient(
     current_user: User = Depends(get_current_user),
 ):
     patient = current_user.patient
 
-    if patient is None:
+    if current_user.role != "patient" or patient is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Authenticated user is not linked to a patient account",
         )
 
     return patient
+
 
 def require_role(*allowed_roles: str):
     def role_checker(current_user: User = Depends(get_current_user)) -> User:
@@ -59,6 +61,7 @@ def require_role(*allowed_roles: str):
         return current_user
 
     return role_checker
+
 
 def require_hospital_access(
     hospital_id: int,

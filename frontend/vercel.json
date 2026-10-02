@@ -1,0 +1,24 @@
+{
+  "rewrites": [
+    {
+      "source": "/doctor/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/patient/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/patients/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/my-health/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/sign-in",
+      "destination": "/index.html"
+    }
+  ]
+}

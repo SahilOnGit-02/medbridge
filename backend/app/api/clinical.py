@@ -55,6 +55,7 @@ def create_and_refresh(db, model, payload):
     db.refresh(obj)
     return obj
 
+
 def require_payload_hospital_access(current_user, hospital_id: int):
     if current_user.role == "system_admin":
         return
@@ -71,6 +72,7 @@ def require_payload_hospital_access(current_user, hospital_id: int):
             detail="User does not have access to this hospital",
         )
 
+
 @router.post(
     "/hospitals",
     response_model=HospitalRead,
@@ -81,9 +83,7 @@ def create_hospital(
     db: Session = Depends(get_db),
     current_user=Depends(require_role("hospital_admin", "system_admin")),
 ):
-    existing = db.scalar(
-        select(Hospital).where(Hospital.code == payload.code)
-    )
+    existing = db.scalar(select(Hospital).where(Hospital.code == payload.code))
 
     if existing:
         return existing
@@ -106,8 +106,7 @@ def create_mapping(
         select(PatientHospitalMapping).where(
             PatientHospitalMapping.patient_id == payload.patient_id,
             PatientHospitalMapping.hospital_id == payload.hospital_id,
-            PatientHospitalMapping.external_patient_id
-            == payload.external_patient_id,
+            PatientHospitalMapping.external_patient_id == payload.external_patient_id,
         )
     )
 
@@ -151,6 +150,7 @@ def create_encounter(
         payload,
     )
 
+
 def require_patient_hospital_access(db, current_user, patient_id: int):
     if current_user.role == "system_admin":
         return
@@ -173,6 +173,7 @@ def require_patient_hospital_access(db, current_user, patient_id: int):
             status_code=403,
             detail="User does not have access to this patient",
         )
+
 
 def require_patient_clinical_read_access(
     db,
@@ -209,7 +210,7 @@ def require_patient_clinical_read_access(
             PatientHospitalConsent.status == "active",
         )
         .order_by(
-            PatientHospitalConsent.created_at.desc()
+            PatientHospitalConsent.granted_at.desc(), PatientHospitalConsent.id.desc()
         )
     )
 
@@ -228,6 +229,7 @@ def require_patient_clinical_read_access(
         )
 
     return consent
+
 
 @router.post(
     "/conditions",
@@ -448,12 +450,8 @@ def get_unified_clinical_record(
 
         prescriptions = [
             UnifiedPrescriptionRead(
-                **PrescriptionRead.model_validate(
-                    prescription
-                ).model_dump(),
-                medication=MedicationRead.model_validate(
-                    prescription.medication
-                ),
+                **PrescriptionRead.model_validate(prescription).model_dump(),
+                medication=MedicationRead.model_validate(prescription.medication),
             )
             for prescription in prescriptions_source
         ]
@@ -466,45 +464,23 @@ def get_unified_clinical_record(
             if mapping.hospital_id == current_user.hospital_id
         ]
 
-        encounters = (
-            patient.encounters
-            if consent.share_encounters
-            else []
-        )
+        encounters = patient.encounters if consent.share_encounters else []
 
-        conditions = (
-            patient.conditions
-            if consent.share_conditions
-            else []
-        )
+        conditions = patient.conditions if consent.share_conditions else []
 
-        allergies = (
-            patient.allergies
-            if consent.share_allergies
-            else []
-        )
+        allergies = patient.allergies if consent.share_allergies else []
 
-        observations = (
-            patient.observations
-            if consent.share_observations
-            else []
-        )
+        observations = patient.observations if consent.share_observations else []
 
         prescriptions_source = (
-            patient.prescriptions
-            if consent.share_prescriptions
-            else []
+            patient.prescriptions if consent.share_prescriptions else []
         )
 
         prescriptions = [
             UnifiedPrescriptionRead(
-                **PrescriptionRead.model_validate(
-                    prescription
-                ).model_dump(),
+                **PrescriptionRead.model_validate(prescription).model_dump(),
                 medication=(
-                    MedicationRead.model_validate(
-                        prescription.medication
-                    )
+                    MedicationRead.model_validate(prescription.medication)
                     if consent.share_medications
                     else None
                 ),
@@ -514,13 +490,35 @@ def get_unified_clinical_record(
 
     return UnifiedClinicalRecord(
         patient=PatientRead.model_validate(patient),
-        hospital_mappings=hospital_mappings,
+        access={
+            "mode": "administrative" if consent is None else "patient_consent",
+            "withheld_categories": [
+                category
+                for category in (
+                    "allergies",
+                    "medications",
+                    "conditions",
+                    "prescriptions",
+                    "observations",
+                    "encounters",
+                )
+                if consent is not None and not getattr(consent, f"share_{category}")
+            ],
+            "expires_at": consent.expires_at if consent else None,
+        },
+        hospital_mappings=[
+            MappingRead.model_validate(mapping).model_copy(
+                update={"hospital_name": mapping.hospital.name}
+            )
+            for mapping in hospital_mappings
+        ],
         encounters=encounters,
         conditions=conditions,
         allergies=allergies,
         prescriptions=prescriptions,
         observations=observations,
     )
+
 
 @router.get(
     "/resolve/{hospital_id}/{external_patient_id}",

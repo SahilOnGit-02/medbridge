@@ -178,9 +178,9 @@ def teardown_function():
 
 def login_as_emergency_doctor():
     response = client.post(
-        "/auth/login",
+        "/auth/doctor/login",
         json={
-            "email": "doctor.emergency@medbridge.in",
+            "identifier": "doctor.emergency@medbridge.in",
             "password": "EmergencyDoctor123!",
         },
     )
@@ -191,9 +191,9 @@ def login_as_emergency_doctor():
 
 def login_as_emergency_patient():
     response = client.post(
-        "/auth/login",
+        "/auth/patient/login",
         json={
-            "email": "patient.emergency@medbridge.in",
+            "identifier": "patient.emergency@medbridge.in",
             "password": "EmergencyPatient123!",
         },
     )
@@ -204,9 +204,9 @@ def login_as_emergency_patient():
 
 def login_as_other_emergency_doctor():
     response = client.post(
-        "/auth/login",
+        "/auth/doctor/login",
         json={
-            "email": "doctor.other@medbridge.in",
+            "identifier": "doctor.other@medbridge.in",
             "password": "OtherEmergencyDoctor123!",
         },
     )
@@ -217,9 +217,9 @@ def login_as_other_emergency_doctor():
 
 def login_as_other_emergency_doctor():
     response = client.post(
-        "/auth/login",
+        "/auth/doctor/login",
         json={
-            "email": "doctor.other@medbridge.in",
+            "identifier": "doctor.other@medbridge.in",
             "password": "OtherEmergencyDoctor123!",
         },
     )

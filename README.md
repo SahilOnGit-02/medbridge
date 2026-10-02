@@ -69,12 +69,12 @@ Hospital B ------> n8n Integration Workflows
                 Unified Clinical Record
 ## Main Components
 
-- **FastAPI** — backend REST API
-- **PostgreSQL** — relational clinical data store
-- **SQLAlchemy** — database ORM
-- **Alembic** — database migrations
-- **n8n** — hospital ingestion and integration workflows
-- **Docker Compose** — local development environment
+- **FastAPI** : backend REST API
+- **PostgreSQL** : relational clinical data store
+- **SQLAlchemy** : database ORM
+- **Alembic** : database migrations
+- **n8n** : hospital ingestion and integration workflows
+- **Docker Compose** : local development environment
 
 ## API
 
@@ -149,7 +149,7 @@ MedBridge is a capstone proof of concept and is not currently suitable for real 
 
 Current limitations and future production work include:
 
-- Consent management is implemented as a prototype consent-record layer; it does not yet gate all clinical/FHIR access.
+- Patient consent scopes gate normal unified-record and FHIR reads. Emergency access follows a separate flow. Broader production authorization review remains required.
 - Audit logging is implemented for key authenticated access events; comprehensive production-grade audit coverage is still required.
 - Production-grade encryption and secret-management practices are still required.
 - Formal security testing and penetration testing are still required.
@@ -161,16 +161,16 @@ Current limitations and future production work include:
 
 ## Roadmap
 
-- [x] Phase 1 — Backend/database foundation
-- [x] Phase 2 — Unified clinical record
+- [x] Phase 1 : Backend/database foundation
+- [x] Phase 2 : Unified clinical record
 - [x] Simulated Hospital A/B ingestion workflows
-- [x] Phase 4 — Interoperability adapters + FHIR-compatible mapping
-- [x] Phase 5 — Doctor dashboard
-- [x] Phase 6 — Emergency mode
-- [x] Phase 7 — Clinical record search & retrieval
-- [x] Phase 8 — Authentication + hospital-scoped RBAC
-- [x] Phase 9 — Consent management + audit trail
-- [ ] Phase 10 — Evaluation, formal security review, final demo and documentation
+- [x] Phase 4 : Interoperability adapters + FHIR-compatible mapping
+- [x] Phase 5 : Doctor dashboard
+- [x] Phase 6 : Emergency mode
+- [x] Phase 7 : Clinical record search & retrieval
+- [x] Phase 8 : Authentication + hospital-scoped RBAC
+- [x] Phase 9 : Consent management + audit trail
+- [ ] Phase 10 : Evaluation, formal security review, final demo and documentation
 
 ## Safety and Data Policy
 
@@ -178,3 +178,11 @@ Only synthetic patient data should be used in this repository and in demonstrati
 
 MedBridge is intended to demonstrate healthcare interoperability concepts. It must not be used as a substitute for clinical judgment, diagnosis, treatment, prescribing, or production medical-record infrastructure.
 
+
+## Local UX improvements
+
+See [the implementation and verification notes](docs/UX-IMPLEMENTATION.md) for the doctor and patient workflow changes, local validation, additive migration, and remaining integration requirements.
+
+The [populated demo review](docs/POPULATED-DEMO.md) covers visible DOB search, recent patients, 100 synthetic profiles and long-history layouts for both portals. Demo seeding is explicit and local only.
+
+The current [portal revision](docs/PORTAL-REVISION.md) separates doctor and patient entry, adds administrator-approved doctor enrollment and locally captured recovery, and prioritizes patient identity with left-side navigation. It documents the required migration, local mail setup, important design references and generated-image provenance.

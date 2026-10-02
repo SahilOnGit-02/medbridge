@@ -1,0 +1,35 @@
+{
+  "success": true,
+  "data": {
+    "lifecycle": {
+      "effectiveLaunch": {
+        "browserLaunched": true,
+        "engine": "chrome",
+        "launchHash": 11677035664275010974
+      },
+      "launched": false,
+      "relaunchedBrowser": false,
+      "restartedBackground": false,
+      "restoreStatus": "not_configured",
+      "reused": true,
+      "saveStatus": "not_attempted"
+    },
+    "origin": "http://localhost:5174/doctor/reset-password?token=rqoQMOrWTB0vrk6FMVoAezV6ak2ct7-7j20zyGnPLmA",
+    "result": {
+      "incomplete": [
+        {
+          "count": 3,
+          "id": "color-contrast"
+        }
+      ],
+      "passes": 25,
+      "url": "http://localhost:5174/doctor/reset-password",
+      "viewport": {
+        "height": 1200,
+        "width": 1440
+      },
+      "violations": []
+    }
+  },
+  "error": null
+}

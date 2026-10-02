@@ -127,9 +127,9 @@ def teardown_function():
 
 def login_as_hospital_a_doctor():
     response = client.post(
-        "/auth/login",
+        "/auth/doctor/login",
         json={
-            "email": "doctor.test.a@medbridge.in",
+            "identifier": "doctor.test.a@medbridge.in",
             "password": "TestDoctorA123!",
         },
     )
@@ -140,9 +140,9 @@ def login_as_hospital_a_doctor():
 
 def login_as_system_admin():
     response = client.post(
-        "/auth/login",
+        "/auth/doctor/login",
         json={
-            "email": "system.admin@medbridge.in",
+            "identifier": "system.admin@medbridge.in",
             "password": "TestSystemAdmin123!",
         },
     )
@@ -363,9 +363,9 @@ def login_as_patient():
     db.close()
 
     response = client.post(
-        "/auth/login",
+        "/auth/patient/login",
         json={
-            "email": "patient.test@medbridge.in",
+            "identifier": "patient.test@medbridge.in",
             "password": "TestPatientA123!",
         },
     )

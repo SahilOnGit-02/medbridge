@@ -28,6 +28,11 @@ class Patient(Base):
     date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
     blood_group: Mapped[str | None] = mapped_column(String(8), nullable=True)
 
+    blood_group_source: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    emergency_details_updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True
+    )
+
     gender: Mapped[str | None] = mapped_column(String(30), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -64,6 +69,10 @@ class Patient(Base):
         DateTime,
         default=datetime.utcnow,
     )
+
+    @property
+    def has_account(self):
+        return self.user_id is not None
 
     user = relationship(
         "User",
