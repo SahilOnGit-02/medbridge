@@ -231,9 +231,9 @@ def teardown_function():
 
 def login_as_hospital_a_doctor():
     response = client.post(
-        "/auth/login",
+        "/auth/doctor/login",
         json={
-            "email": "doctor.test.a@medbridge.in",
+            "identifier": "doctor.test.a@medbridge.in",
             "password": "TestDoctorA123!",
         },
     )
@@ -244,9 +244,9 @@ def login_as_hospital_a_doctor():
 
 def login_as_patient():
     response = client.post(
-        "/auth/login",
+        "/auth/patient/login",
         json={
-            "email": "patient.test@medbridge.in",
+            "identifier": "patient.test@medbridge.in",
             "password": "TestPatientA123!",
         },
     )
@@ -352,9 +352,9 @@ def test_doctor_cannot_create_hospital():
 
 def test_hospital_admin_can_create_hospital():
     response = client.post(
-        "/auth/login",
+        "/auth/doctor/login",
         json={
-            "email": "admin.test@medbridge.in",
+            "identifier": "admin.test@medbridge.in",
             "password": "TestHospitalAdmin123!",
         },
     )
@@ -378,9 +378,9 @@ def test_hospital_admin_can_create_hospital():
 
 def test_system_admin_can_create_hospital():
     response = client.post(
-        "/auth/login",
+        "/auth/doctor/login",
         json={
-            "email": "system.admin@medbridge.in",
+            "identifier": "system.admin@medbridge.in",
             "password": "TestSystemAdmin123!",
         },
     )
@@ -515,9 +515,9 @@ def test_hospital_doctor_can_create_prescription_for_own_hospital_patient():
 
 def test_system_admin_can_retrieve_patient_from_any_hospital():
     response = client.post(
-        "/auth/login",
+        "/auth/doctor/login",
         json={
-            "email": "system.admin@medbridge.in",
+            "identifier": "system.admin@medbridge.in",
             "password": "TestSystemAdmin123!",
         },
     )
@@ -547,7 +547,6 @@ def test_hospital_doctor_can_update_patient_profile():
             "address": "Test Address, Delhi",
             "emergency_contact_name": "Test Emergency Contact",
             "emergency_contact_phone": "9876500000",
-            "profile_photo_url": "/demo/patients/test-patient-a.jpg",
         },
     )
 
@@ -562,7 +561,7 @@ def test_hospital_doctor_can_update_patient_profile():
     assert data["address"] == "Test Address, Delhi"
     assert data["emergency_contact_name"] == "Test Emergency Contact"
     assert data["emergency_contact_phone"] == "9876500000"
-    assert data["profile_photo_url"] == "/demo/patients/test-patient-a.jpg"
+    assert data["profile_photo_url"] is None
 
 def test_hospital_doctor_cannot_update_patient_profile_from_other_hospital():
     token = login_as_hospital_a_doctor()
@@ -593,11 +592,11 @@ def test_patient_profile_update_cannot_modify_verification_metadata():
         },
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 422
 
-    data = response.json()
+    data = client.get("/patients/MB-TEST-A-001", headers={"Authorization": f"Bearer {token}"}).json()
 
-    assert data["full_name"] == "Verification Metadata Test"
+    assert data["full_name"] != "Verification Metadata Test"
     assert data["identity_verification_status"] is None
     assert data["identity_verified_at"] is None
     assert data["identity_verified_by"] is None
@@ -771,9 +770,9 @@ def test_patient_account_can_login_after_creation():
     assert create_response.status_code == 200
 
     login_response = client.post(
-        "/auth/login",
+        "/auth/patient/login",
         json={
-            "email": "login.patient@medbridge.in",
+            "identifier": "login.patient@medbridge.in",
             "password": "NewPatient123!",
         },
     )

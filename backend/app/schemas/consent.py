@@ -15,6 +15,7 @@ class ConsentCreate(BaseModel):
     share_prescriptions: bool = True
     share_observations: bool = True
     share_encounters: bool = True
+    share_reports: bool = True
 
     granted_at: datetime
     expires_at: datetime | None = None
@@ -30,6 +31,7 @@ class PatientConsentCreate(BaseModel):
     share_prescriptions: bool = True
     share_observations: bool = True
     share_encounters: bool = True
+    share_reports: bool = True
 
     expires_at: datetime | None = None
 

@@ -1,6 +1,6 @@
 # MedBridge local UX implementation
 
-Developed and tested locally on `codex/medbridge-ux-improvements`. Deployment is not part of these implementation checks. The later populated-data review is documented in [POPULATED-DEMO.md](POPULATED-DEMO.md).
+Developed and tested locally on `codex/medbridge-ux-improvements`. Deployment is not part of these implementation checks. The later populated-data review is documented in [POPULATED-DEMO.md](POPULATED-DEMO.md). The current [portal revision](PORTAL-REVISION.md) replaces the shared login, adds account enrollment/recovery and revises both layouts. The stages and screenshots below describe the earlier implementation.
 
 ## Completed stages
 

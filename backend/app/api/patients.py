@@ -69,6 +69,41 @@ def get_my_patient_profile(
     return current_patient
 
 
+@router.patch("/me/profile", response_model=PatientRead)
+def update_my_profile(
+    payload: PatientProfileUpdate,
+    db: Session = Depends(get_db),
+    patient: Patient = Depends(get_current_patient),
+):
+    data = payload.model_dump(exclude_unset=True)
+    if "blood_group" in data and data["blood_group"] != patient.blood_group:
+        patient.blood_group_source = "patient_reported" if data["blood_group"] else None
+    for key, value in data.items():
+        setattr(patient, key, value)
+    patient.user.full_name = patient.full_name
+    log_audit_event(
+        db,
+        current_user=patient.user,
+        action="patient_profile_updated",
+        resource_type="patient",
+        resource_id=patient.id,
+        patient_id=patient.id,
+        success=True,
+    )
+    db.commit()
+    db.refresh(patient)
+    return patient
+
+
+@router.post("/me/photo", response_model=PatientRead)
+async def upload_my_photo(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    patient: Patient = Depends(get_current_patient),
+):
+    return await save_photo(file, patient, db, patient.user)
+
+
 @router.get("", response_model=list[PatientSearchResult])
 def list_patients(
     db: Session = Depends(get_db),
@@ -88,7 +123,7 @@ def list_patients(
             PatientHospitalMapping.patient_id == Patient.id,
         ).where(PatientHospitalMapping.hospital_id == current_user.hospital_id)
 
-    query = query.order_by(Patient.full_name.asc())
+    query = query.order_by(func.lower(Patient.full_name).asc(), Patient.id.asc())
 
     return db.scalars(query).unique().all()
 
@@ -146,6 +181,8 @@ def create_patient(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    if current_user.role not in {"doctor", "hospital_admin", "system_admin"}:
+        raise HTTPException(403, "Insufficient permissions")
     existing = db.scalar(
         select(Patient).where(Patient.medbridge_id == payload.medbridge_id)
     )
@@ -206,7 +243,7 @@ def search_patients(
             PatientHospitalMapping.patient_id == Patient.id,
         ).where(PatientHospitalMapping.hospital_id == current_user.hospital_id)
 
-    query = query.order_by(Patient.full_name.asc())
+    query = query.order_by(func.lower(Patient.full_name).asc(), Patient.id.asc())
 
     return db.scalars(query).unique().all()
 
@@ -275,6 +312,8 @@ def update_patient_profile(
         )
     for field, value in update_data.items():
         setattr(patient, field, value)
+    if patient.user and "full_name" in update_data:
+        patient.user.full_name = patient.full_name
 
     db.commit()
     db.refresh(patient)
@@ -353,7 +392,9 @@ def create_patient_account(
             detail="Patient already has an account",
         )
 
-    existing_user = db.scalar(select(User).where(User.email == payload.email))
+    existing_user = db.scalar(
+        select(User).where(func.lower(User.email) == str(payload.email).lower())
+    )
 
     if existing_user:
         raise HTTPException(
@@ -413,13 +454,17 @@ async def upload_patient_photo(
         patient.id,
     )
 
+    return await save_photo(file, patient, db, current_user)
+
+
+async def save_photo(file, patient, db, current_user):
     if file.content_type not in ALLOWED_PROFILE_PHOTO_TYPES:
         raise HTTPException(
             status_code=400,
             detail="Only JPEG, PNG, and WebP images are allowed",
         )
 
-    file_bytes = await file.read()
+    file_bytes = await file.read(MAX_PROFILE_PHOTO_SIZE + 1)
 
     if len(file_bytes) > MAX_PROFILE_PHOTO_SIZE:
         raise HTTPException(
@@ -427,6 +472,13 @@ async def upload_patient_photo(
             detail="Profile photo must be 5 MB or smaller",
         )
 
+    signatures = {
+        "image/jpeg": file_bytes.startswith(b"\xff\xd8\xff"),
+        "image/png": file_bytes.startswith(b"\x89PNG\r\n\x1a\n"),
+        "image/webp": file_bytes.startswith(b"RIFF") and file_bytes[8:12] == b"WEBP",
+    }
+    if not signatures.get(file.content_type):
+        raise HTTPException(400, "The selected file does not match its image format")
     extension_map = {
         "image/jpeg": ".jpg",
         "image/png": ".png",

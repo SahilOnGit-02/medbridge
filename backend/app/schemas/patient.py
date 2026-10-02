@@ -18,20 +18,45 @@ class PatientCreate(BaseModel):
 
 
 class PatientProfileUpdate(BaseModel):
-    full_name: str | None = None
+    model_config = ConfigDict(extra="forbid")
+    full_name: str | None = Field(default=None, min_length=2, max_length=200)
     date_of_birth: date | None = None
     blood_group: str | None = None
-    gender: str | None = None
+    gender: str | None = Field(default=None, max_length=30)
     phone: str | None = None
-    email: str | None = None
-    address: str | None = None
-    emergency_contact_name: str | None = None
+    email: EmailStr | None = None
+    address: str | None = Field(default=None, max_length=500)
+    emergency_contact_name: str | None = Field(default=None, max_length=200)
     emergency_contact_phone: str | None = None
-    profile_photo_url: str | None = None
+
+    @field_validator("full_name")
+    @classmethod
+    def normalize_name(cls, value):
+        if value is None or len(value.strip()) < 2:
+            raise ValueError("Enter a full name with at least 2 characters")
+        return " ".join(value.split())
+
+    @field_validator("date_of_birth")
+    @classmethod
+    def validate_birth(cls, value):
+        if value and value > date.today():
+            raise ValueError("Date of birth cannot be in the future")
+        return value
+
+    @field_validator("blood_group")
+    @classmethod
+    def normalize_blood(cls, value):
+        return EmergencyProfileUpdate.normalize_blood_group(value)
+
+    @field_validator("phone", "emergency_contact_phone")
+    @classmethod
+    def normalize_phone(cls, value, info):
+        return EmergencyProfileUpdate.normalize_contact(value, info)
 
 
 class PatientRead(PatientCreate):
     id: int
+    has_account: bool = False
     blood_group_source: str | None = None
     emergency_details_updated_at: datetime | None = None
     identity_verification_status: str | None = None
@@ -50,6 +75,11 @@ class RecentPatientRead(PatientSearchResult):
 
 
 class PatientAccountCreate(BaseModel):
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_account_email(cls, value):
+        return value.strip().lower() if isinstance(value, str) else value
+
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
 

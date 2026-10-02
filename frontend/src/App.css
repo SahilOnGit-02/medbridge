@@ -1291,3 +1291,434 @@ dialog::backdrop {
     grid-template-columns: 1fr;
   }
 }
+/* Portal revision: persistent navigation, patient-first context, separate entry. */
+:root {
+  --primary: #155fc9;
+  --primary-dark: #104da5;
+}
+[hidden] {
+  display: none !important;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.account-entry {
+  display: grid;
+  grid-template-columns: minmax(300px, 44%) minmax(0, 1fr);
+  min-height: 100dvh;
+  background: white;
+}
+.account-entry:focus {
+  outline: none;
+}
+.account-visual {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  min-height: 620px;
+  overflow: hidden;
+  background: #dbe7ef;
+}
+.account-visual > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 45% 40%;
+}
+.account-visual-copy {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 90px 40px 36px;
+  background: linear-gradient(transparent, #102945 45%);
+  color: white;
+}
+.account-visual-copy .brand {
+  color: white;
+  margin-bottom: 20px;
+}
+.account-visual-copy h2 {
+  font-size: 1.7rem;
+  max-width: 360px;
+}
+.account-visual-copy p {
+  margin: 0;
+  color: #e3edf8;
+}
+.account-content {
+  width: min(100%, 640px);
+  padding: 48px 56px;
+  margin: auto;
+}
+.account-content > .eyebrow {
+  margin-top: 28px;
+}
+.account-content h1 {
+  margin-bottom: 16px;
+}
+.account-content form {
+  display: grid;
+  gap: 18px;
+  margin: 28px 0 20px;
+}
+.account-content form .notice {
+  margin: 0;
+}
+.account-links {
+  display: grid;
+  gap: 10px;
+  margin-top: 24px;
+}
+.account-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+.account-links > div {
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+.recovery-help {
+  margin: 20px 0;
+}
+.recovery-help p {
+  padding: 0 18px;
+  font-size: 0.9rem;
+}
+.recovery-help p:first-of-type {
+  padding-top: 18px;
+}
+.portal-options {
+  display: grid;
+  gap: 20px;
+  margin-top: 28px;
+}
+.portal-options article {
+  border: 1px solid #c7d4e5;
+  border-radius: 12px;
+  padding: 24px;
+}
+.portal-options article > a {
+  margin-top: 12px;
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+}
+.portal-options small {
+  display: block;
+  color: #475569;
+}
+.app-header {
+  padding: 18px max(24px, calc((100% - 1440px) / 2));
+}
+.portal-shell {
+  max-width: 1440px;
+  margin: auto;
+  display: grid;
+  grid-template-columns: 216px minmax(0, 1fr);
+  align-items: start;
+}
+.portal-sidebar {
+  position: sticky;
+  top: 0;
+  padding: 28px 16px 24px;
+  min-height: calc(100dvh - 90px);
+  border-right: 1px solid #d5dfeb;
+  background: #fff;
+}
+.portal-sidebar > .eyebrow {
+  padding: 0 12px 8px;
+}
+.portal-sidebar .primary-nav {
+  display: grid;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+}
+.portal-sidebar .primary-nav a {
+  padding: 12px;
+}
+.record-nav {
+  display: grid;
+  gap: 6px;
+  margin-top: 24px;
+  border-top: 1px solid #d5dfeb;
+  padding-top: 20px;
+}
+.record-nav a {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+}
+.workspace {
+  margin: 0;
+  padding: 28px 32px 48px;
+  min-width: 0;
+  width: 100%;
+}
+.identity {
+  background: #e9f1fd;
+  border: 1px solid #b9cce9;
+  border-left: 5px solid #155fc9;
+  border-radius: 12px;
+  padding: 24px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.identity h1 {
+  font-size: clamp(1.7rem, 2.5vw, 2.2rem);
+}
+.identity-actions {
+  flex-basis: 100%;
+  margin-top: 4px;
+  justify-content: flex-start;
+}
+.profile-details {
+  margin-bottom: 24px;
+}
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px 24px;
+  margin: 18px 0;
+}
+.profile-grid dt {
+  font-size: 0.8rem;
+  color: #475569;
+  margin-bottom: 4px;
+}
+.profile-grid dd {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.provider-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.provider-list li > * {
+  display: block;
+}
+.provider-list span {
+  font-size: 0.85rem;
+  color: #475569;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+}
+.directory-heading {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+.directory-heading > div:first-child {
+  flex: 1;
+  min-width: 220px;
+}
+.directory-actions {
+  align-self: center;
+}
+.patient-combobox {
+  min-width: 0;
+  position: relative;
+}
+.patient-suggestions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 80px;
+  z-index: 5;
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  background: white;
+  border: 1px solid #91a6c2;
+  border-radius: 8px;
+  box-shadow: 0 12px 24px #172b4526;
+  max-height: 350px;
+  overflow-y: auto;
+}
+.patient-suggestions li {
+  padding: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.patient-suggestions li:hover,
+.patient-suggestions li[aria-selected="true"] {
+  background: #e9f1fd;
+  outline: 2px solid #155fc9;
+  outline-offset: -2px;
+}
+.patient-suggestions li > * {
+  display: block;
+}
+.patient-suggestions span {
+  font-size: 0.8rem;
+  color: #475569;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+.patient-search > .search-form {
+  padding: 24px;
+  background: #edf3fc;
+  border: 1px solid #c3d4ec;
+  border-radius: 10px;
+}
+.compact-record {
+  margin-bottom: 8px;
+  border-radius: 6px;
+}
+.compact-record > summary {
+  gap: 16px;
+  padding: 12px;
+  flex-wrap: wrap;
+}
+.compact-record > summary > .compact-date {
+  flex: 0 0 100px;
+  color: #475569;
+  font-size: 0.8rem;
+}
+.compact-record > summary > strong {
+  flex: 1;
+  min-width: 100px;
+}
+.compact-record > .record-row {
+  padding: 16px;
+}
+#patient-details,
+#critical-information,
+#record-history,
+#provider-details {
+  scroll-margin-top: 20px;
+}
+@media (max-width: 1100px) {
+  .profile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .critical-grid {
+    grid-template-columns: 1fr;
+  }
+  .critical-list {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .critical-list li {
+    flex: 1;
+    min-width: 180px;
+  }
+  .account-content {
+    padding: 36px;
+  }
+  .provider-list {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 760px) {
+  .portal-shell {
+    grid-template-columns: 1fr;
+  }
+  .portal-sidebar {
+    position: static;
+    min-height: auto;
+    padding: 10px 16px;
+    border-right: 0;
+    border-bottom: 1px solid #d5dfeb;
+  }
+  .portal-sidebar > .eyebrow {
+    display: none;
+  }
+  .portal-sidebar .primary-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+  .portal-sidebar .primary-nav a {
+    font-size: 0.85rem;
+    padding: 8px 10px;
+  }
+  .record-nav {
+    display: flex;
+    overflow-x: auto;
+    margin-top: 8px;
+    padding-top: 8px;
+    gap: 8px;
+  }
+  .record-nav a {
+    white-space: nowrap;
+    padding: 6px;
+  }
+  .workspace {
+    padding: 20px 16px 40px;
+  }
+  .account-entry {
+    grid-template-columns: 1fr;
+  }
+  .account-visual {
+    position: relative;
+    height: 200px;
+    min-height: auto;
+  }
+  .account-visual > img {
+    object-position: 45% 30%;
+  }
+  .account-visual-copy {
+    padding: 24px;
+    background: linear-gradient(transparent, #102945);
+  }
+  .account-visual-copy .brand {
+    margin-bottom: 0;
+  }
+  .account-visual-copy h2,
+  .account-visual-copy p {
+    display: none;
+  }
+  .account-content {
+    padding: 28px 24px 40px;
+  }
+  .identity {
+    padding: 20px;
+  }
+  .profile-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .identity-actions {
+    gap: 8px;
+  }
+  .identity-actions button {
+    width: 100%;
+  }
+  .patient-search > .search-form {
+    padding: 16px;
+  }
+  .compact-record > summary > strong {
+    flex-basis: 100%;
+    order: 3;
+  }
+  .compact-record > summary > .compact-date {
+    flex: 1;
+  }
+  .critical-list {
+    display: block;
+  }
+  .directory-heading > div:first-child {
+    min-width: 0;
+  }
+}

@@ -70,6 +70,10 @@ class Patient(Base):
         default=datetime.utcnow,
     )
 
+    @property
+    def has_account(self):
+        return self.user_id is not None
+
     user = relationship(
         "User",
         foreign_keys=[user_id],
@@ -114,6 +118,12 @@ class Patient(Base):
 
     consents = relationship(
         "PatientHospitalConsent",
+        back_populates="patient",
+        cascade="all, delete-orphan",
+    )
+
+    medical_reports = relationship(
+        "MedicalReport",
         back_populates="patient",
         cascade="all, delete-orphan",
     )

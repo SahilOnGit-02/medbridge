@@ -1,13 +1,21 @@
 import { useState } from "react";
-import { request } from "../lib";
+import { dateText, request } from "../lib";
 import { Field, Modal, Notice } from "./UI";
-function ProfileEditor({ token, patient, onDone, onCancel }) {
+export function ProfileEditor({
+  token,
+  patient,
+  onDone,
+  onCancel,
+  own = false,
+  onBusyChange,
+  onProfileCommitted,
+}) {
   const fields = [
     ["full_name", "Full name", "text"],
     ["date_of_birth", "Date of birth", "date"],
     ["gender", "Gender", "text"],
     ["phone", "Phone", "tel"],
-    ["email", "Email", "email"],
+    ["email", "Contact email", "email"],
     ["address", "Address", "text"],
     ["emergency_contact_name", "Emergency contact name", "text"],
     ["emergency_contact_phone", "Emergency contact phone", "tel"],
@@ -18,15 +26,21 @@ function ProfileEditor({ token, patient, onDone, onCancel }) {
       ["blood_group", patient.blood_group || ""],
     ]),
   );
+  const [photo, setPhoto] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function save(event) {
     event.preventDefault();
     setBusy(true);
+    onBusyChange?.(true);
     setError("");
     try {
+      if (photo && photo.size > 5 * 1024 * 1024)
+        throw new Error("Select a photo of 5 MB or smaller.");
       await request(
-        `/patients/${encodeURIComponent(patient.medbridge_id)}/profile`,
+        own
+          ? "/patients/me/profile"
+          : `/patients/${encodeURIComponent(patient.medbridge_id)}/profile`,
         token,
         {
           method: "PATCH",
@@ -40,19 +54,53 @@ function ProfileEditor({ token, patient, onDone, onCancel }) {
           ),
         },
       );
+      onProfileCommitted?.();
+      if (photo) {
+        const body = new FormData();
+        body.append("file", photo);
+        try {
+          await request(
+            own
+              ? "/patients/me/photo"
+              : `/patients/${encodeURIComponent(patient.medbridge_id)}/photo`,
+            token,
+            { method: "POST", body },
+          );
+        } catch (failure) {
+          throw new Error(
+            `Profile saved, but photo was not updated: ${failure.message}`,
+            { cause: failure },
+          );
+        }
+      }
       onDone("Patient profile saved.");
     } catch (failure) {
       setError(failure.message);
     } finally {
       setBusy(false);
+      onBusyChange?.(false);
     }
   }
   return (
     <form onSubmit={save} className="admin-form" aria-busy={busy}>
-      <h3>Edit patient profile</h3>
+      <p className="help">
+        Contact email is separate from your sign-in email. Updating this profile
+        does not change your login.
+      </p>
+      <Field
+        label="Profile photo (optional)"
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        hint="JPEG, PNG or WebP, up to 5 MB. Leave empty to keep the current photo."
+        onChange={(event) => setPhoto(event.target.files[0] || null)}
+      />
       <Field
         label="Blood group"
-        hint="A clinician-entered value is recorded with its source. Clinical verification remains separate."
+        hint={
+          own
+            ? "Changes are saved as patient reported. Clinical verification remains separate."
+            : "Saved as clinician entered. Clinical verification remains separate."
+        }
       >
         {(id) => (
           <select
@@ -85,6 +133,11 @@ function ProfileEditor({ token, patient, onDone, onCancel }) {
                     ? 30
                     : 200
             }
+            max={
+              key === "date_of_birth"
+                ? new Date().toISOString().slice(0, 10)
+                : undefined
+            }
             value={values[key]}
             onChange={(event) =>
               setValues({ ...values, [key]: event.target.value })
@@ -104,7 +157,13 @@ function ProfileEditor({ token, patient, onDone, onCancel }) {
     </form>
   );
 }
-function AccountEditor({ token, patient, onDone, onCancel }) {
+export function AccountEditor({
+  token,
+  patient,
+  onDone,
+  onCancel,
+  onBusyChange,
+}) {
   const [email, setEmail] = useState(patient.email || "");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -112,6 +171,7 @@ function AccountEditor({ token, patient, onDone, onCancel }) {
   async function save(event) {
     event.preventDefault();
     setBusy(true);
+    onBusyChange?.(true);
     setError("");
     try {
       await request(
@@ -130,6 +190,7 @@ function AccountEditor({ token, patient, onDone, onCancel }) {
       setError(failure.message);
     } finally {
       setBusy(false);
+      onBusyChange?.(false);
     }
   }
   return (
@@ -170,15 +231,23 @@ function AccountEditor({ token, patient, onDone, onCancel }) {
     </form>
   );
 }
-export default function PatientAdministration({ token, patient, onRefresh }) {
+export default function PatientAdministration({
+  token,
+  patient,
+  onRefresh,
+  own = false,
+}) {
   const [mode, setMode] = useState("");
+  const [committed, setCommitted] = useState(false);
+  function closeProfile() {
+    setMode("");
+    if (committed)
+      onRefresh("Profile changes saved. Photo upload was not completed.");
+  }
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [photo, setPhoto] = useState(null);
   function done(text) {
     setMode("");
-    setMessage(text);
     onRefresh(text);
   }
   async function verify() {
@@ -197,92 +266,43 @@ export default function PatientAdministration({ token, patient, onRefresh }) {
       setBusy(false);
     }
   }
-  async function upload(event) {
-    event.preventDefault();
-    if (!photo) return;
-    if (photo.size > 5 * 1024 * 1024) {
-      setError("Select a photo smaller than 5 MB.");
-      return;
-    }
-    setBusy(true);
-    setError("");
-    const form = new FormData();
-    form.append("file", photo);
-    try {
-      await request(
-        `/patients/${encodeURIComponent(patient.medbridge_id)}/photo`,
-        token,
-        { method: "POST", body: form },
-      );
-      done("Patient photo updated.");
-      setPhoto(null);
-    } catch (failure) {
-      setError(failure.message);
-    } finally {
-      setBusy(false);
-    }
-  }
   return (
-    <section className="patient-administration">
-      <h3>Manage patient profile</h3>
-      <p className="help">
-        Profile management is separate from the clinical record and identity
-        verification.
-      </p>
-      <Notice>{message}</Notice>
-      <Notice error>{error}</Notice>
-      {mode === "profile" ? (
-        <ProfileEditor
-          token={token}
-          patient={patient}
-          onDone={done}
-          onCancel={() => setMode("")}
-        />
-      ) : mode === "account" ? (
-        <AccountEditor
-          token={token}
-          patient={patient}
-          onDone={done}
-          onCancel={() => setMode("")}
-        />
-      ) : (
-        <div className="actions">
-          <button onClick={() => setMode("profile")}>
-            Edit patient profile
-          </button>
-          <button onClick={() => setMode("account")}>
-            Create patient account
-          </button>
-          <button
-            onClick={() => {
-              setMode("verify");
-              setError("");
-            }}
-          >
-            Verify identity
-          </button>
-          <button onClick={() => setMode("photo")}>Update photo</button>
-        </div>
+    <>
+      <button
+        className={own ? undefined : "primary"}
+        onClick={() => {
+          setCommitted(false);
+          setMode("profile");
+        }}
+      >
+        {own ? "Edit my profile" : "Edit patient profile"}
+      </button>
+      {!own && patient.identity_verification_status !== "verified" && (
+        <button
+          onClick={() => {
+            setError("");
+            setMode("verify");
+          }}
+        >
+          Verify identity
+        </button>
       )}
-      {mode === "photo" && (
-        <form className="admin-form" onSubmit={upload}>
-          <Field
-            label="Patient photo"
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            required
-            hint="JPEG, PNG or WebP, up to 5 MB."
-            onChange={(event) => setPhoto(event.target.files[0])}
+      {mode === "profile" && (
+        <Modal
+          title={own ? "Edit my profile" : "Edit patient profile"}
+          busy={busy}
+          onClose={closeProfile}
+        >
+          <ProfileEditor
+            token={token}
+            patient={patient}
+            own={own}
+            onBusyChange={setBusy}
+            onProfileCommitted={() => setCommitted(true)}
+            onDone={done}
+            onCancel={closeProfile}
           />
-          <div className="actions end">
-            <button type="button" disabled={busy} onClick={() => setMode("")}>
-              Cancel
-            </button>
-            <button className="primary" disabled={busy}>
-              {busy ? "Uploading…" : "Upload photo"}
-            </button>
-          </div>
-        </form>
+        </Modal>
       )}
       {mode === "verify" && (
         <Modal
@@ -292,8 +312,8 @@ export default function PatientAdministration({ token, patient, onRefresh }) {
         >
           <p>
             Confirm that you have checked {patient.full_name}’s identity using
-            your organization’s approved process. This marks identity as
-            verified. It does not verify clinical information.
+            your organization’s approved process. This does not verify clinical
+            information.
           </p>
           <Notice error>{error}</Notice>
           <div className="actions end">
@@ -306,6 +326,39 @@ export default function PatientAdministration({ token, patient, onRefresh }) {
           </div>
         </Modal>
       )}
+    </>
+  );
+}
+export function ProfileDetails({ patient }) {
+  return (
+    <section className="card profile-details" id="patient-details">
+      <h2>Patient details</h2>
+      <dl className="profile-grid">
+        {[
+          ["Date of birth", dateText(patient.date_of_birth)],
+          ["Blood group", patient.blood_group || "Not recorded"],
+          ["Phone", patient.phone || "Not recorded"],
+          ["Contact email", patient.email || "Not recorded"],
+          ["Address", patient.address || "Not recorded"],
+          [
+            "Emergency contact",
+            `${patient.emergency_contact_name || "Not recorded"} ${patient.emergency_contact_phone || ""}`,
+          ],
+        ].map(([label, value]) => (
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="help">
+        {patient.blood_group_source === "patient_reported"
+          ? "Blood group is patient reported."
+          : patient.blood_group_source === "clinician_recorded"
+            ? "Blood group is clinician entered."
+            : "Blood group source is not recorded."}{" "}
+        Clinical verification remains separate.
+      </p>
     </section>
   );
 }
