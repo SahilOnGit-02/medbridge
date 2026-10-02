@@ -113,6 +113,12 @@ class Patient(Base):
         cascade="all, delete-orphan",
     )
 
+    medical_reports = relationship(
+        "MedicalReport",
+        back_populates="patient",
+        cascade="all, delete-orphan",
+    )
+
     emergency_accesses = relationship(
         "EmergencyAccess",
         back_populates="patient",

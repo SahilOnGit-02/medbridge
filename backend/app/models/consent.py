@@ -49,6 +49,10 @@ class PatientHospitalConsent(Base):
         Boolean,
         default=True,
     )
+    share_reports: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+    )
 
     granted_at: Mapped[datetime] = mapped_column(DateTime)
     expires_at: Mapped[datetime | None] = mapped_column(

@@ -21,6 +21,9 @@ function PatientDashboard({
   patientAccessHistory,
   patientAccessHistoryLoading,
   patientAccessHistoryError,
+  patientMedicalReports,
+  patientMedicalReportsLoading,
+  patientMedicalReportsError,
     patientEmergencyProfile,
     patientEmergencyProfileLoading,
     patientEmergencyProfileError,
@@ -34,6 +37,55 @@ function PatientDashboard({
     setPatientEmergencyProfileForm,
   onLogout,
 }) {
+  async function openMedicalReport(reportId) {
+    const reportWindow = window.open(
+      "",
+      "_blank",
+      "noopener,noreferrer"
+    );
+
+    if (!reportWindow) {
+      setPatientMedicalReportsError(
+        "Please allow pop-ups to view medical reports."
+      );
+      return;
+    }
+
+    try {
+      setPatientMedicalReportsError("");
+
+      const response = await fetch(
+        `${API_BASE_URL}/patients/me/reports/${reportId}/file`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "Unable to open this medical report."
+        );
+      }
+
+      const blob = await response.blob();
+      const fileUrl = URL.createObjectURL(blob);
+
+      reportWindow.location.href = fileUrl;
+
+      setTimeout(() => {
+        URL.revokeObjectURL(fileUrl);
+      }, 60000);
+    } catch (requestError) {
+      reportWindow.close();
+
+      setPatientMedicalReportsError(
+        requestError.message ||
+          "Unable to open this medical report."
+      );
+    }
+  }
   if (patientLoading) {
     return (
       <div className="patient-app">
@@ -538,6 +590,83 @@ function PatientDashboard({
   )}
 </section>
 
+<section className="patient-panel patient-full-panel patient-consent-panel">
+  <div className="patient-panel-header">
+    <div>
+      <h3>Medical Reports</h3>
+      <p className="patient-empty">
+        View your laboratory, imaging, consultation, prescription, and discharge documents.
+      </p>
+    </div>
+
+    {!patientMedicalReportsLoading && (
+      <span className="card-badge">
+        {patientMedicalReports?.length || 0}
+      </span>
+    )}
+  </div>
+
+  {patientMedicalReportsLoading ? (
+    <p className="patient-empty">
+      Loading medical reports...
+    </p>
+  ) : patientMedicalReportsError ? (
+    <div className="patient-consent-error">
+      {patientMedicalReportsError}
+    </div>
+  ) : !patientMedicalReports?.length ? (
+    <p className="patient-empty">
+      No medical reports are available yet.
+    </p>
+  ) : (
+    <div className="patient-consent-list">
+      {patientMedicalReports.map((report) => (
+        <div
+          className="patient-consent-item"
+          key={report.id}
+        >
+          <div className="patient-consent-details">
+            <strong>{report.title}</strong>
+
+            <span>
+              Type: {report.report_type}
+            </span>
+
+            <span>
+              Issued:{" "}
+              {report.issued_on
+                ? new Date(
+                    `${report.issued_on}T00:00:00`
+                  ).toLocaleDateString()
+                : "Unknown date"}
+            </span>
+
+            {report.issuing_doctor && (
+              <span>
+                Doctor: {report.issuing_doctor}
+              </span>
+            )}
+
+            {report.department && (
+              <span>
+                Department: {report.department}
+              </span>
+            )}
+          </div>
+
+          <button
+            type="button"
+            className="patient-consent-action"
+            onClick={() => openMedicalReport(report.id)}
+          >
+            View PDF
+          </button>
+        </div>
+      ))}
+    </div>
+  )}
+</section>
+
         <section className="patient-panel patient-full-panel patient-consent-panel">
           <div className="patient-panel-header">
             <h3>Consent & Sharing</h3>
@@ -750,6 +879,12 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [record, setRecord] = useState(null);
+  const [patientMedicalReports, setPatientMedicalReports] =
+    useState([]);
+  const [patientMedicalReportsLoading, setPatientMedicalReportsLoading] =
+    useState(false);
+  const [patientMedicalReportsError, setPatientMedicalReportsError] =
+    useState("");
   const [emergencyAccess, setEmergencyAccess] = useState(null);
   const [emergencyProfile, setEmergencyProfile] = useState(null);
   const [emergencyLoading, setEmergencyLoading] = useState(false);
@@ -798,18 +933,24 @@ const [patientEmergencyProfileForm, setPatientEmergencyProfileForm] =
   const [loginLoading, setLoginLoading] = useState(false);
 
   async function loadPatientDashboard(token) {
-  setPatientLoading(true);
-  setPatientError("");
-  setPatientConsentLoading(true);
-  setPatientConsentError("");
-  setPatientAccessHistoryLoading(true);
-  setPatientAccessHistoryError("");
-  setPatientEmergencyProfileLoading(true);
-  setPatientEmergencyProfileError("");
+    setPatientLoading(true);
+    setPatientError("");
+    setPatientConsentLoading(true);
+    setPatientConsentError("");
+    setPatientAccessHistoryLoading(true);
+    setPatientAccessHistoryError("");
+    setPatientEmergencyProfileLoading(true);
+    setPatientEmergencyProfileError("");
+    setPatientMedicalReportsLoading(true);
+    setPatientMedicalReportsError("");
 
-  try {
-    const [profileResponse, summaryResponse, consentResponse] =
-      await Promise.all([
+    try {
+      const [
+        profileResponse,
+        summaryResponse,
+        consentResponse,
+        reportsResponse,
+      ] = await Promise.all([
         fetch(`${API_BASE_URL}/patients/me`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -827,13 +968,30 @@ const [patientEmergencyProfileForm, setPatientEmergencyProfileForm] =
             Authorization: `Bearer ${token}`,
           },
         }),
+
+        fetch(`${API_BASE_URL}/patients/me/reports`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }),
       ]);
 
-    if (!profileResponse.ok || !summaryResponse.ok) {
+      if (!profileResponse.ok || !summaryResponse.ok) {
       throw new Error(
         "Unable to load your health records."
       );
     }
+
+if (!reportsResponse.ok) {
+  setPatientMedicalReports([]);
+  setPatientMedicalReportsError(
+    "Unable to load your medical reports."
+  );
+} else {
+  const reports = await reportsResponse.json();
+  setPatientMedicalReports(reports);
+  setPatientMedicalReportsError("");
+}
 
     if (!consentResponse.ok) {
       throw new Error(
@@ -884,9 +1042,10 @@ try {
     );
   }
   finally {
-    setPatientLoading(false);
-    setPatientConsentLoading(false);
-  }
+   setPatientLoading(false);
+   setPatientConsentLoading(false);
+   setPatientMedicalReportsLoading(false);
+ }
 
   try {
     const emergencyProfileResponse = await fetch(
@@ -1154,6 +1313,7 @@ async function handleLogin(event) {
       );
     } finally {
       setLoading(false);
+      setPatientMedicalReportsLoading(false);
     }
   }
 
@@ -1162,6 +1322,9 @@ async function selectPatient(selectedPatient) {
   setError("");
   setPatient(selectedPatient);
   setRecord(null);
+  setPatientMedicalReports([]);
+  setPatientMedicalReportsError("");
+  setPatientMedicalReportsLoading(true);
 
   try {
     const recordResponse = await fetch(
@@ -1175,7 +1338,9 @@ async function selectPatient(selectedPatient) {
 
     if (recordResponse.status === 401) {
       logoutDoctor();
-      throw new Error("Your session has expired. Please sign in again.");
+      throw new Error(
+        "Your session has expired. Please sign in again."
+      );
     }
 
     const recordData = await recordResponse.json();
@@ -1185,6 +1350,28 @@ async function selectPatient(selectedPatient) {
         recordData.detail ||
           "Patient found, but clinical record could not be loaded."
       );
+    }
+
+    const reportsResponse = await fetch(
+      `${API_BASE_URL}/patients/${selectedPatient.id}/reports`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    const reportsData = await reportsResponse.json();
+
+    if (!reportsResponse.ok) {
+      setPatientMedicalReports([]);
+      setPatientMedicalReportsError(
+        reportsData.detail ||
+          "Unable to load medical reports."
+      );
+    } else {
+      setPatientMedicalReports(reportsData);
+      setPatientMedicalReportsError("");
     }
 
     setPatient(selectedPatient);
@@ -1198,6 +1385,7 @@ async function selectPatient(selectedPatient) {
     );
   } finally {
     setLoading(false);
+    setPatientMedicalReportsLoading(false);
   }
 }
 
@@ -1348,10 +1536,11 @@ async function endEmergencyAccess() {
       setError(
         requestError.message || "Unable to load patients."
       );
-    } finally {
-      setLoading(false);
-    }
+   } finally {
+     setLoading(false);
+     setPatientMedicalReportsLoading(false);
   }
+ }
 
   const recordSearchTerm = recordSearch.trim().toLowerCase();
 
@@ -1540,6 +1729,9 @@ if (currentUser?.role === "patient") {
       patientAccessHistory={patientAccessHistory}
       patientAccessHistoryLoading={patientAccessHistoryLoading}
       patientAccessHistoryError={patientAccessHistoryError}
+      patientMedicalReports={patientMedicalReports}
+      patientMedicalReportsLoading={patientMedicalReportsLoading}
+      patientMedicalReportsError={patientMedicalReportsError}
       patientEmergencyProfile={patientEmergencyProfile}
       setPatientEmergencyProfile={
         setPatientEmergencyProfile
