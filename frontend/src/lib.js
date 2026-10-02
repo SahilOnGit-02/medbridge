@@ -127,6 +127,7 @@ export const categories = [
   ["prescriptions", "Prescriptions"],
   ["observations", "Test results"],
   ["encounters", "Visits"],
+  ["reports", "Medical Reports"],
 ];
 export function consentState(consent) {
   return !consent
