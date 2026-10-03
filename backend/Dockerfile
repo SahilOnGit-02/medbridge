@@ -5,6 +5,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
+COPY seed_medical_reports.py .
 COPY alembic.ini .
 COPY alembic ./alembic
 
