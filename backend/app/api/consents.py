@@ -29,6 +29,7 @@ SHARING_FIELDS = tuple(
         "prescriptions",
         "observations",
         "encounters",
+        "reports",
     )
 )
 
