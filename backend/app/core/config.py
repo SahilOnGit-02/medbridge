@@ -12,7 +12,6 @@ class Settings(BaseSettings):
     account_mailbox_dir: str | None = None
     public_app_url: str = "http://localhost:5173"
     jwt_algorithm: str = "HS256"
-    medical_report_seed_key: str | None = None
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
