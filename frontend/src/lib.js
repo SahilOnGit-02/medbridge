@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 export const API =
   import.meta.env.VITE_API_BASE_URL ||
   (import.meta.env.PROD
-    ? "https://medbridge-hw6z.onrender.com"
+    ? "https://medbridge-m1b5.onrender.com"
     : "http://127.0.0.1:8001");
 export async function request(path, token, options = {}) {
   const controller = new AbortController();
