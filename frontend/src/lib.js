@@ -22,10 +22,10 @@ export async function request(path, token, options = {}) {
         ...options.headers,
       },
     });
-   const data =
-        options.responseType === "blob"
-             ? await response.blob()
-              : await response.json().catch(() => null);
+    const data =
+      response.ok && options.responseType === "blob"
+        ? await response.blob()
+        : await response.json().catch(() => null);
     if (!response.ok) {
       if (response.status === 401 && token)
         window.dispatchEvent(new Event("session-expired"));

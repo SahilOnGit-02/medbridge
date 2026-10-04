@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { dateText, isCurrent, request } from "../lib";
+import { dateText, isCurrent } from "../lib";
 import { Empty, Field, Link, Notice } from "./UI";
 const groups = [
   ["allergies", "Allergies"],
@@ -16,118 +16,6 @@ function recordedDate(item) {
     item.started_at ||
     item.observed_at ||
     ""
-  );
-}
-function MedicalReports({ token, patientId, patient }) {
-  const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadReports() {
-      setLoading(true);
-      setError("");
-
-      try {
-        const path = patientId
-          ? `/patients/${patientId}/reports`
-          : "/patients/me/reports";
-
-        const data = await request(path, token);
-
-        if (!cancelled) {
-          setReports(data || []);
-        }
-      } catch (failure) {
-        if (!cancelled) {
-          setError(failure.message);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
-    if (token) {
-      loadReports();
-    }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [token, patientId]);
-
-  async function openReport(report) {
-    try {
-      const path = patientId
-        ? `/patients/${patientId}/reports/${report.id}/file`
-        : `/patients/me/reports/${report.id}/file`;
-
-      const blob = await request(path, token, {
-        responseType: "blob",
-        headers: {
-          Accept: "application/pdf",
-        },
-      });
-
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener,noreferrer");
-
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
-    } catch (failure) {
-      setError(failure.message);
-    }
-  }
-
-  return (
-    <section className="card medical-reports" id="medical-reports">
-      <div className="section-heading">
-        <div>
-          <h2>Medical Reports</h2>
-          <p className="help">
-            {patientId
-              ? `Reports available for ${patient?.full_name || "this patient"}.`
-              : "Your available medical reports."}
-          </p>
-        </div>
-      </div>
-
-      {loading && <p>Loading medical reports…</p>}
-
-      {error && (
-        <Notice error>
-          {error}
-        </Notice>
-      )}
-
-      {!loading && !error && reports.length === 0 && (
-        <p>No medical reports are currently available.</p>
-      )}
-
-      {!loading && reports.length > 0 && (
-        <ul className="document-list">
-          {reports.map((report) => (
-            <li key={report.id}>
-              <div>
-                <strong>{report.title}</strong>
-                <p className="record-meta">
-                  {report.report_type || "Medical report"}
-                  {report.issued_on ? ` · ${dateText(report.issued_on)}` : ""}
-                </p>
-                {report.description && <p>{report.description}</p>}
-              </div>
-
-              <button type="button" onClick={() => openReport(report)}>
-                Open PDF
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
   );
 }
 function newestFirst(a, b) {
@@ -545,12 +433,7 @@ function Timeline({ record, match, recordType }) {
     </div>
   );
 }
-export default function Records({
-  record,
-  token,
-  patientId,
-  initialView = "categories",
-}) {
+export default function Records({ record, initialView = "categories" }) {
   const [filter, setFilter] = useState("");
   const [view, setView] = useState(initialView);
   const [year, setYear] = useState("all");
@@ -763,11 +646,6 @@ export default function Records({
               </details>
             );
           })}
-    <MedicalReports
-          token={token}
-          patientId={patientId}
-          patient={record.patient}
-        />
       </div>
     </section>
   );

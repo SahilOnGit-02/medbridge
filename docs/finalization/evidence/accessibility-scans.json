@@ -1,0 +1,21 @@
+[
+  {
+    "url": "/my-health/reports",
+    "viewport": 320,
+    "violations": [],
+    "incomplete": 0
+  },
+  {
+    "url": "/patients/1",
+    "viewport": 1440,
+    "violations": [],
+    "incomplete": 0
+  },
+  {
+    "url": "/patients/1",
+    "viewport": 320,
+    "overflow": false,
+    "violations": [],
+    "incomplete": 0
+  }
+]

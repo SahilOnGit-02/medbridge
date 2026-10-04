@@ -81,6 +81,7 @@ export default function App() {
     const pageNames = {
       overview: "Overview",
       records: "Records",
+      reports: "Medical reports",
       emergency: "Emergency profile",
       sharing: "Sharing",
       history: "Access history",
@@ -136,6 +137,7 @@ export default function App() {
     ? [
         ["Overview", "/my-health/overview"],
         ["Records", "/my-health/records"],
+        ["Medical reports", "/my-health/reports"],
         ["Emergency profile", "/my-health/emergency"],
         ["Sharing", "/my-health/sharing"],
         ["Access history", "/my-health/history"],
@@ -187,6 +189,7 @@ export default function App() {
               <a href="#patient-details">Patient details</a>
               <a href="#critical-information">Current information</a>
               <a href="#record-history">Record history</a>
+              <a href="#medical-reports">Medical reports</a>
               <a href="#provider-details">Connected providers</a>
             </nav>
           )}

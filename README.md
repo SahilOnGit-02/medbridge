@@ -186,3 +186,9 @@ See [the implementation and verification notes](docs/UX-IMPLEMENTATION.md) for t
 The [populated demo review](docs/POPULATED-DEMO.md) covers visible DOB search, recent patients, 100 synthetic profiles and long-history layouts for both portals. Demo seeding is explicit and local only.
 
 The current [portal revision](docs/PORTAL-REVISION.md) separates doctor and patient entry, adds administrator-approved doctor enrollment and locally captured recovery, and prioritizes patient identity with left-side navigation. It documents the required migration, local mail setup, important design references and generated-image provenance.
+
+## Finalization and release handoff
+
+The [technical documentation index](docs/README.md) covers the current account lifecycle, consent/report access, environment configuration, generated API/ER references, deployment checklist and demo guidance. [Finalization verification](docs/finalization/VERIFICATION.md) records checks for this branch.
+
+Medical Reports has a dedicated patient page and an independent clinician record section. Account email supports private development capture and configurable TLS SMTP. Provider details and final deployed URLs are still required before live email and staging acceptance. The bundled n8n exports require current API URL/authentication configuration and have not been rerun in this revision.

@@ -11,6 +11,7 @@ import {
   State,
 } from "./UI";
 import Records, { CriticalInformation, RecentVisits } from "./Records";
+import MedicalReports from "./MedicalReports";
 import EmergencyAccess from "./EmergencyAccess";
 import PatientAdministration, {
   AccountEditor,
@@ -378,12 +379,13 @@ function PatientRecord({
             <ProfileDetails patient={patient} />
             <CriticalInformation record={record} doctor />
             <RecentVisits record={record} />
-            <Records
+            <Records key={id} record={record} />
+            <MedicalReports
               key={id}
-              record={record}
               token={token}
               patientId={id}
-             />
+              patient={patient}
+            />
             <section className="card provider-details" id="provider-details">
               <h2>Connected providers</h2>
               <ul className="provider-list">

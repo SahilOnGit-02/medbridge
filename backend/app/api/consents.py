@@ -29,6 +29,7 @@ SHARING_FIELDS = tuple(
         "prescriptions",
         "observations",
         "encounters",
+        "reports",
     )
 )
 
@@ -215,6 +216,7 @@ def create_my_consent(
         existing_revoked_consent.share_prescriptions = payload.share_prescriptions
         existing_revoked_consent.share_observations = payload.share_observations
         existing_revoked_consent.share_encounters = payload.share_encounters
+        existing_revoked_consent.share_reports = payload.share_reports
         existing_revoked_consent.granted_at = now
         existing_revoked_consent.expires_at = payload.expires_at
         existing_revoked_consent.revoked_at = None
@@ -238,6 +240,7 @@ def create_my_consent(
         share_prescriptions=payload.share_prescriptions,
         share_observations=payload.share_observations,
         share_encounters=payload.share_encounters,
+        share_reports=payload.share_reports,
         granted_at=now,
         expires_at=payload.expires_at,
         revoked_at=None,

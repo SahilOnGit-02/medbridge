@@ -1604,6 +1604,7 @@ dialog::backdrop {
 #patient-details,
 #critical-information,
 #record-history,
+#medical-reports,
 #provider-details {
   scroll-margin-top: 20px;
 }
@@ -1632,9 +1633,10 @@ dialog::backdrop {
 }
 @media (max-width: 760px) {
   .portal-shell {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .portal-sidebar {
+    min-width: 0;
     position: static;
     min-height: auto;
     padding: 10px 16px;
@@ -1654,14 +1656,14 @@ dialog::backdrop {
     padding: 8px 10px;
   }
   .record-nav {
-    display: flex;
-    overflow-x: auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     margin-top: 8px;
     padding-top: 8px;
     gap: 8px;
   }
   .record-nav a {
-    white-space: nowrap;
+    white-space: normal;
     padding: 6px;
   }
   .workspace {
@@ -1720,5 +1722,49 @@ dialog::backdrop {
   }
   .directory-heading > div:first-child {
     min-width: 0;
+  }
+}
+
+/* Reports remain independent of the clinical history layout. */
+.report-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 16px;
+  margin: 20px 0 12px;
+}
+.report-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+}
+.report-list li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 0;
+  border-top: 1px solid var(--border, #d6e2e5);
+}
+.report-list h3 {
+  margin: 0 0 8px;
+}
+.report-list li > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.report-list li > button {
+  flex-shrink: 0;
+}
+@media (max-width: 600px) {
+  .report-filters {
+    grid-template-columns: 1fr;
+  }
+  .report-list li {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .medical-reports .section-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
   }
 }

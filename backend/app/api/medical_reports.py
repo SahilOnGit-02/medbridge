@@ -5,11 +5,13 @@ from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.clinical import require_patient_hospital_access
+from app.api.clinical import (
+    require_patient_hospital_access,
+    require_patient_clinical_read_access,
+)
 from app.api.deps import get_current_patient, get_current_user
 from app.db.session import get_db
 from app.models.audit import AuditLog
-from app.models.consent import PatientHospitalConsent
 from app.models.medical_report import MedicalReport
 from app.models.patient import Patient
 from app.schemas.medical_report import MedicalReportRead
@@ -18,21 +20,15 @@ from app.schemas.medical_report import MedicalReportRead
 router = APIRouter(
     prefix="/patients",
     tags=["Medical Reports"],
-
 )
 
-REPORT_ROOT = (
-    Path(__file__).resolve().parent.parent / "demo_reports"
-)
+REPORT_ROOT = Path(__file__).resolve().parent.parent / "demo_reports"
 
 
 def resolve_report_file(report: MedicalReport) -> Path:
     file_name = Path(report.file_name)
 
-    if (
-        file_name.name != report.file_name
-        or file_name.is_absolute()
-    ):
+    if file_name.name != report.file_name or file_name.is_absolute():
         raise HTTPException(
             status_code=500,
             detail="Medical report storage path is invalid",
@@ -62,61 +58,13 @@ def require_report_read_access(
     current_user,
     patient_id: int,
 ):
-    if current_user.role == "system_admin":
-        return None
-
-    if current_user.role not in {"doctor", "hospital_admin"}:
-        raise HTTPException(
-            status_code=403,
-            detail="Insufficient permissions",
-        )
-
-    if current_user.hospital_id is None:
-        raise HTTPException(
-            status_code=403,
-            detail="User is not associated with a hospital",
-        )
-
-    consent = db.scalar(
-        select(PatientHospitalConsent)
-        .where(
-            PatientHospitalConsent.patient_id == patient_id,
-            PatientHospitalConsent.hospital_id == current_user.hospital_id,
-            PatientHospitalConsent.status == "active",
-        )
-        .order_by(
-            PatientHospitalConsent.created_at.desc()
-        )
-    )
-
-    if consent is None:
-        raise HTTPException(
-            status_code=403,
-            detail="Patient has not granted clinical record access to this hospital",
-        )
-
-    from datetime import datetime, timezone
-
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
-
-    if consent.expires_at is not None and consent.expires_at <= now:
-        raise HTTPException(
-            status_code=403,
-            detail="Patient clinical record access has expired",
-        )
-
-    if not consent.share_reports:
+    require_patient_hospital_access(db, current_user, patient_id)
+    consent = require_patient_clinical_read_access(db, current_user, patient_id)
+    if consent is not None and not consent.share_reports:
         raise HTTPException(
             status_code=403,
             detail="Patient has not granted medical report access to this hospital",
         )
-
-    require_patient_hospital_access(
-        db,
-        current_user,
-        patient_id,
-    )
-
     return consent
 
 
@@ -232,6 +180,10 @@ def get_my_report_file(
         path=file_path,
         media_type=report.mime_type,
         filename=report.file_name,
+        headers={
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
     )
 
 
@@ -278,4 +230,8 @@ def get_patient_report_file(
         path=file_path,
         media_type=report.mime_type,
         filename=report.file_name,
+        headers={
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
     )

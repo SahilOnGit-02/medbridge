@@ -1,12 +1,9 @@
-"""Separate portal entry, verified signup and local-only recovery delivery."""
+"""Separate portal entry, verified signup and configurable account email delivery."""
 
 from datetime import date, datetime, timedelta
 from hashlib import sha256
-import json
-import os
-from pathlib import Path
 import secrets
-from urllib.parse import quote, urlparse
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, EmailStr, Field, field_validator
@@ -19,6 +16,7 @@ from app.core.audit import log_audit_event
 from app.core.config import settings
 from app.core.jwt import create_access_token
 from app.core.security import hash_password, verify_password
+from app.services.account_mail import delivery_ready, deliver_or_report
 from app.models.account import AccountThrottle, AccountToken, DoctorRegistration
 from app.models.hospital import Hospital
 from app.models.patient import Patient
@@ -84,41 +82,6 @@ def portal_roles(portal):
         if portal == "patient"
         else {"doctor", "hospital_admin", "system_admin"}
     )
-
-
-def delivery_ready():
-    # Capture is a developer mailbox, never a publicly readable endpoint.
-    origin = urlparse(settings.public_app_url)
-    if (
-        settings.app_env != "development"
-        or settings.account_mail_mode != "capture"
-        or not settings.account_mailbox_dir
-        or origin.hostname not in {"localhost", "127.0.0.1"}
-    ):
-        raise HTTPException(
-            503, "Account email delivery is not configured. Contact your administrator."
-        )
-
-
-def capture_mail(email, subject, body):
-    delivery_ready()
-    mailbox = Path(settings.account_mailbox_dir)
-    mailbox.mkdir(parents=True, exist_ok=True, mode=0o700)
-    destination = (
-        mailbox / f"{datetime.utcnow():%Y%m%dT%H%M%S}-{secrets.token_hex(8)}.json"
-    )
-    fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    with os.fdopen(fd, "w") as handle:
-        json.dump(
-            {
-                "to": email,
-                "subject": subject,
-                "body": body,
-                "delivery": "local capture only; no email sent",
-            },
-            handle,
-            indent=2,
-        )
 
 
 def throttle_key(request, portal, purpose, identifier):
@@ -293,14 +256,23 @@ def signup(
             )
         link = issue_token(db, user, portal, "verify")
         db.flush()
-        capture_mail(
-            email,
-            "Verify your MedBridge email",
-            f"Verify your email within 24 hours: {link}\nDoctor accounts remain inactive until administrator approval. If you did not request this, ignore this message.",
-        )
         db.commit()
     except IntegrityError:
         db.rollback()
+        return response
+    deliver_or_report(
+        email,
+        "Verify your MedBridge email",
+        f"Verify your email within 24 hours: {link}\n"
+        + (
+            "Doctor accounts remain inactive until administrator approval.\n"
+            if portal == "doctor"
+            else ""
+        )
+        + "If you did not request this, ignore this message.",
+        portal=portal,
+        purpose="verify",
+    )
     return response
 
 
@@ -324,7 +296,7 @@ def recover(
     )
     if user:
         if kind == "username":
-            body = f"Your {portal} portal sign-in identifier is: {user.username or user.email}\nSign in at {settings.public_app_url}/{portal}/sign-in. If you did not request this message, ignore it."
+            body = f"Your {portal} portal sign-in identifier is: {user.username or user.email}\nSign in at {settings.public_app_url.rstrip(chr(47))}/{portal}/sign-in. If you did not request this message, ignore it."
         elif kind == "verification" and user.registration_status == "pending_email":
             body = f"Verify your email within 24 hours: {issue_token(db, user, portal, 'verify')}"
         elif kind == "password":
@@ -332,8 +304,15 @@ def recover(
         else:
             return GENERIC_RECOVERY
         db.flush()
-        capture_mail(email, f"MedBridge {kind} help", body)
         db.commit()
+        deliver_or_report(
+            email,
+            f"MedBridge {kind} help",
+            body,
+            portal=portal,
+            purpose=kind,
+            recovery=True,
+        )
     return GENERIC_RECOVERY
 
 
