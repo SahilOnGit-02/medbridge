@@ -87,7 +87,7 @@ export default function App() {
       history: "Access history",
     };
     document.title = user
-      ? `MedBridge | ${patientRole ? pageNames[route.split("/")[2]] || "Patient portal" : route === "/patients" ? "Find a patient" : "Patient record"}`
+      ? `MedBridge | ${patientRole ? pageNames[route.split("/")[2]] || "Patient portal" : route === "/patients" ? "Home" : route === "/patients/recent" ? "Recently opened patients" : route === "/patients/directory" ? "Patient directory" : "Patient record"}`
       : "MedBridge | Portal access";
     document.querySelector("#main")?.focus({ preventScroll: true });
   }, [route, user, patientRole]);
@@ -142,7 +142,14 @@ export default function App() {
         ["Sharing", "/my-health/sharing"],
         ["Access history", "/my-health/history"],
       ]
-    : [["Patients", "/patients"]];
+    : [
+        ["Home", "/patients"],
+        ["Recently opened", "/patients/recent"],
+        ["Patient directory", "/patients/directory"],
+        ...(["hospital_admin", "system_admin"].includes(user.role)
+          ? [["Doctor registrations", "/patients/registrations"]]
+          : []),
+      ];
   return (
     <>
       <a className="skip-link" href="#main">
@@ -173,36 +180,34 @@ export default function App() {
               <Link
                 key={path}
                 to={path}
-                aria-current={
-                  route === path ||
-                  (!patientRole && route.startsWith("/patients/"))
-                    ? "page"
-                    : undefined
-                }
+                aria-current={route === path ? "page" : undefined}
               >
                 {label}
               </Link>
             ))}
           </nav>
-          {!patientRole && route.match(/^\/patients\/\d+$/) && (
-            <nav className="record-nav" aria-label="Patient record sections">
-              <a href="#patient-details">Patient details</a>
-              <a href="#critical-information">Current information</a>
-              <a href="#record-history">Record history</a>
-              <a href="#medical-reports">Medical reports</a>
-              <a href="#provider-details">Connected providers</a>
-            </nav>
-          )}
-          {!patientRole && route === "/patients" && (
-            <nav className="record-nav" aria-label="Patient directory sections">
-              <a href="#patient-search">Search patients</a>
-              <a href="#recent-patients">Recently opened</a>
-              <a href="#patient-directory">Patient directory</a>
-              {["hospital_admin", "system_admin"].includes(user.role) && (
-                <a href="#doctor-registrations">Doctor registrations</a>
-              )}
-            </nav>
-          )}
+          {!patientRole &&
+            route.match(/^\/patients\/\d+(?:\/(records|reports))?$/) && (
+              <nav className="record-nav" aria-label="Opened patient">
+                <p className="eyebrow">Opened patient</p>
+                {[
+                  ["Patient overview", ""],
+                  ["Record history", "/records"],
+                  ["Medical reports", "/reports"],
+                ].map(([label, suffix]) => {
+                  const path = `/patients/${route.split("/")[2]}${suffix}`;
+                  return (
+                    <Link
+                      key={path}
+                      to={path}
+                      aria-current={route === path ? "page" : undefined}
+                    >
+                      {label}
+                    </Link>
+                  );
+                })}
+              </nav>
+            )}
         </aside>
         <main id="main" tabIndex={-1} className="workspace">
           {patientRole ? (

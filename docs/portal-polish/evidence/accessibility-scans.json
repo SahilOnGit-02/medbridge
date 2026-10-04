@@ -1,0 +1,79 @@
+[
+  {
+    "name": "axe-doctor-overview",
+    "incomplete": [],
+    "passes": 22,
+    "url": "http://localhost:5174/patients/1",
+    "viewport": {
+      "height": 900,
+      "width": 1280
+    },
+    "violations": []
+  },
+  {
+    "name": "axe-doctor-signup",
+    "incomplete": [],
+    "passes": 22,
+    "url": "http://localhost:5174/doctor/sign-up",
+    "viewport": {
+      "height": 900,
+      "width": 1280
+    },
+    "violations": []
+  },
+  {
+    "name": "axe-patient-mobile",
+    "incomplete": [],
+    "passes": 22,
+    "url": "http://localhost:5174/my-health/overview",
+    "viewport": {
+      "height": 900,
+      "width": 320
+    },
+    "violations": []
+  },
+  {
+    "name": "axe-patient-reports-mobile",
+    "incomplete": [],
+    "passes": 28,
+    "url": "http://localhost:5174/my-health/reports",
+    "viewport": {
+      "height": 900,
+      "width": 320
+    },
+    "violations": []
+  },
+  {
+    "name": "axe-patient-signup-mobile",
+    "incomplete": [],
+    "passes": 22,
+    "url": "http://localhost:5174/patient/sign-up",
+    "viewport": {
+      "height": 900,
+      "width": 320
+    },
+    "violations": []
+  },
+  {
+    "name": "axe-report-preview-mobile",
+    "incomplete": [],
+    "passes": 23,
+    "url": "http://localhost:5174/my-health/reports",
+    "viewport": {
+      "height": 900,
+      "width": 320
+    },
+    "violations": []
+  },
+  {
+    "name": "axe-verification-code",
+    "incomplete": [],
+    "passes": 22,
+    "url": "http://localhost:5174/patient/verify-code",
+    "viewport": {
+      "height": 900,
+      "width": 1280
+    },
+    "violations": []
+  }
+]

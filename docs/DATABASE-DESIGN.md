@@ -60,6 +60,17 @@ erDiagram
         INTEGER reviewed_by FK
         DATETIME reviewed_at
     }
+    email_verifications {
+        INTEGER id PK
+        INTEGER user_id FK
+        VARCHAR challenge_digest
+        VARCHAR code_digest
+        VARCHAR portal
+        DATETIME sent_at
+        DATETIME expires_at
+        INTEGER attempts
+        DATETIME consumed_at
+    }
     emergency_access {
         INTEGER id PK
         INTEGER patient_id FK
@@ -204,6 +215,7 @@ erDiagram
     patients ||--o{ conditions : "patient_id"
     users |o--o{ doctor_registrations : "reviewed_by"
     users ||--o| doctor_registrations : "user_id"
+    users ||--o{ email_verifications : "user_id"
     hospitals ||--o{ emergency_access : "hospital_id"
     patients ||--o{ emergency_access : "patient_id"
     users ||--o{ emergency_access : "user_id"
@@ -297,6 +309,20 @@ Relationship lines show foreign-key connections; nullable foreign keys and appli
 | `organization` | VARCHAR(200) | No | - |
 | `reviewed_by` | INTEGER | Yes | users.id |
 | `reviewed_at` | DATETIME | Yes | - |
+
+## email_verifications
+
+| Column | Type | Nullable | References |
+|---|---|---|---|
+| `id` | INTEGER | No | - |
+| `user_id` | INTEGER | No | users.id |
+| `challenge_digest` | VARCHAR(64) | No | - |
+| `code_digest` | VARCHAR(64) | No | - |
+| `portal` | VARCHAR(20) | No | - |
+| `sent_at` | DATETIME | No | - |
+| `expires_at` | DATETIME | No | - |
+| `attempts` | INTEGER | No | - |
+| `consumed_at` | DATETIME | Yes | - |
 
 ## emergency_access
 

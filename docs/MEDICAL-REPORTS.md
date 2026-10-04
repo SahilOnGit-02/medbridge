@@ -2,9 +2,11 @@
 
 ## Interface
 
-Patients use the dedicated Medical Reports item in the left navigation or the overview shortcut. Doctors use the Medical Reports record-section link. Reports are independent of the category/timeline history control and therefore do not disappear when switching layout.
+Patients use the dedicated Medical Reports item in the left navigation or the overview shortcut. Doctors use the dedicated Medical Reports page in the opened-patient navigation. Reports are independent of the category/timeline history control and therefore do not disappear when switching layout.
 
-The list shows newest reports first, title, type, date, issuing clinician/department and description. Users can search by title, clinician or date and filter report type. Ten results are displayed initially; older reports can be revealed in batches. Refresh, loading, empty and error states are explicit. Download PDF shows preparation feedback and avoids relying on a popup opened after an asynchronous request.
+The list shows newest reports first, title, type, date, issuing clinician/department and description. Users can search by title, clinician or date and filter report type. Ten results are displayed initially; older reports can be revealed in batches. Refresh, loading, empty and error states are explicit. Right-aligned actions read Open report or Open prescription according to the report type/title. Rows have 24px padding and 24px separation. Each action re-authorizes the file request and opens a dialog with loading/error feedback, a lazily loaded PDF.js viewer with page navigation, zoom and extracted page text, an explicit new-tab option and Save a copy. Object URLs are revoked when the preview closes or its component unmounts. The in-page renderer works independently of native browser PDF support; the explicit new-tab/save controls remain available if rendering fails. PDF text extraction does not establish the accessibility of the original document.
+
+The renderer follows the [official PDF.js document and page rendering APIs](https://mozilla.github.io/pdf.js/examples/).
 
 ## API and storage
 

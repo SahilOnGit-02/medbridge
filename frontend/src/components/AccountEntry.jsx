@@ -1,28 +1,48 @@
-import { useState } from "react";
-import { request } from "../lib";
-import { Field, Link, Notice } from "./UI";
+import { useEffect, useState } from "react";
+import { navigate, request } from "../lib";
+import { Field, Link, Notice, PasswordField } from "./UI";
 
 const titles = {
   "sign-in": "Sign in",
   "sign-up": "Create an account",
-  "forgot-username": "Forgot username",
-  "forgot-password": "Forgot password",
+  "forgot-username": "Recover your sign-in details",
+  "forgot-password": "Reset your password",
   "reset-password": "Set a new password",
   "verify-email": "Verify your email",
-  "resend-verification": "Resend verification email",
+  "verify-code": "Enter your verification code",
+  "resend-verification": "Request a verification email",
 };
 export default function AccountEntry({ route, onLogin, message }) {
   const [, portal, path] = route.split("/");
   const selected = ["doctor", "patient"].includes(portal);
   const mode = titles[path] ? path : "sign-in";
   const doctor = portal === "doctor";
+  const prefix = `/${portal}`;
+  const storageKey = `medbridge_verification_${portal}`;
+  const [verification, setVerification] = useState(() => {
+    try {
+      const linkChallenge = new URLSearchParams(window.location.search).get(
+        "challenge",
+      );
+      return linkChallenge
+        ? { challenge: linkChallenge, resendAt: Date.now() + 90000 }
+        : JSON.parse(sessionStorage.getItem(storageKey)) || {};
+    } catch {
+      return {};
+    }
+  });
   const [values, setValues] = useState({});
-  const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const token = new URLSearchParams(window.location.search).get("token") || "";
-  const prefix = `/${portal}`;
+  const [now, setNow] = useState(() => Date.now());
+  const query = new URLSearchParams(window.location.search);
+  const token = query.get("token") || "";
+  const challenge = verification.challenge || query.get("challenge");
+  const remaining = Math.max(
+    0,
+    Math.ceil(((verification.resendAt || 0) - now) / 1000),
+  );
   const signup = mode === "sign-up";
   const password = mode === "sign-in" || signup || mode === "reset-password";
   const recovery = [
@@ -30,6 +50,40 @@ export default function AccountEntry({ route, onLogin, message }) {
     "forgot-password",
     "resend-verification",
   ].includes(mode);
+  useEffect(() => {
+    if (mode !== "verify-code") return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [mode]);
+  useEffect(() => {
+    if (mode !== "verify-code" || !challenge) return;
+    const controller = new AbortController();
+    request(`/auth/${portal}/verification/status`, null, {
+      method: "POST",
+      body: JSON.stringify({ challenge }),
+      signal: controller.signal,
+    })
+      .then((result) =>
+        setVerification((previous) => ({
+          ...previous,
+          resendAt: Date.now() + result.resend_after * 1000,
+        })),
+      )
+      .catch(() => {});
+    return () => controller.abort();
+  }, [mode, portal, challenge]);
+  function remember(result, email) {
+    const next = {
+      challenge: result.challenge || challenge,
+      email,
+      resendAt: Date.now() + (result.resend_after || 90) * 1000,
+    };
+    sessionStorage.setItem(storageKey, JSON.stringify(next));
+    setVerification(next);
+    if (mode === "verify-code")
+      window.history.replaceState({}, "", window.location.pathname);
+    setNow(Date.now());
+  }
   function field(key, label, props = {}) {
     return (
       <Field
@@ -49,12 +103,6 @@ export default function AccountEntry({ route, onLogin, message }) {
     setSuccess("");
     setBusy(true);
     try {
-      if (signup || mode === "reset-password") {
-        if (values.password !== values.confirm)
-          throw new Error(
-            "Passwords do not match. Check both password fields.",
-          );
-      }
       let endpoint, body;
       if (mode === "sign-in") {
         endpoint = "login";
@@ -65,8 +113,7 @@ export default function AccountEntry({ route, onLogin, message }) {
       } else if (signup) {
         endpoint = "signup";
         body = {
-          full_name: values.full_name.trim(),
-          username: values.username.trim(),
+          full_name: `${values.first_name.trim()} ${values.last_name.trim()}`,
           email: values.email.trim().toLowerCase(),
           password: values.password,
           ...(doctor
@@ -76,13 +123,21 @@ export default function AccountEntry({ route, onLogin, message }) {
               }
             : { date_of_birth: values.date_of_birth }),
         };
+      } else if (mode === "verify-code") {
+        if (!challenge)
+          throw new Error("Request a verification email to get a new code.");
+        endpoint = "verify-code";
+        body = { challenge, code: values.code.replace(/[\s-]/g, "") };
       } else if (recovery) {
-        endpoint = `recover/${mode === "forgot-username" ? "username" : mode === "forgot-password" ? "password" : "verification"}`;
+        endpoint =
+          mode === "resend-verification"
+            ? "verification/request"
+            : `recover/${mode === "forgot-username" ? "username" : "password"}`;
         body = { email: values.email.trim().toLowerCase() };
       } else {
         if (!token)
           throw new Error(
-            "Open the link from your email. If it is missing or expired, request a new email below.",
+            "Open the link from your email or request a new email.",
           );
         endpoint = mode;
         body = {
@@ -97,12 +152,43 @@ export default function AccountEntry({ route, onLogin, message }) {
       if (mode === "sign-in") {
         const user = await request("/auth/me", result.access_token);
         onLogin(result.access_token, user);
+      } else if (signup || mode === "resend-verification") {
+        remember(result, body.email);
+        navigate(`${prefix}/verify-code`);
       } else {
         setSuccess(result.message);
-        setValues({ ...values, password: "", confirm: "" });
-        if (["verify-email", "reset-password"].includes(mode))
+        setValues({ ...values, password: "" });
+        if (["verify-code", "verify-email"].includes(mode))
+          sessionStorage.removeItem(storageKey);
+        if (["verify-email", "reset-password", "verify-code"].includes(mode))
           window.history.replaceState({}, "", window.location.pathname);
       }
+    } catch (failure) {
+      if (
+        mode === "sign-in" &&
+        failure.status === 403 &&
+        failure.message.startsWith("Verify your email")
+      ) {
+        navigate(
+          `${prefix}/${verification.challenge && verification.email?.toLowerCase() === values.identifier.trim().toLowerCase() ? "verify-code" : "resend-verification"}`,
+        );
+      } else setError(failure.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function resend() {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await request(
+        `/auth/${portal}/verification/resend`,
+        null,
+        { method: "POST", body: JSON.stringify({ challenge }) },
+      );
+      remember(result, verification.email);
+      setSuccess("");
+      setValues({ ...values, code: "" });
     } catch (failure) {
       setError(failure.message);
     } finally {
@@ -132,74 +218,83 @@ export default function AccountEntry({ route, onLogin, message }) {
             <p>Enter the space for your account.</p>
             <Notice>{message}</Notice>
             <div className="portal-options">
-              <article>
-                <h2>Doctor portal</h2>
-                <p>Find patients and review their clinical records.</p>
-                <Link className="button primary full" to="/doctor/sign-in">
-                  Doctor sign in
-                </Link>
-                <Link to="/doctor/sign-up">Sign up as a doctor</Link>
-                <small>Administrator approval required.</small>
-              </article>
-              <article>
-                <h2>Patient portal</h2>
-                <p>Review your history and manage record sharing.</p>
-                <Link className="button primary full" to="/patient/sign-in">
-                  Patient sign in
-                </Link>
-                <Link to="/patient/sign-up">Sign up as a patient</Link>
-              </article>
+              {[
+                [
+                  "doctor",
+                  "Doctor",
+                  "Find patients and review their clinical records.",
+                ],
+                [
+                  "patient",
+                  "Patient",
+                  "Review your history and manage record sharing.",
+                ],
+              ].map(([key, label, description]) => (
+                <article key={key}>
+                  <h2>{label} portal</h2>
+                  <p>{description}</p>
+                  <div className="portal-choice-actions">
+                    <Link
+                      className="button primary"
+                      to={`/${key}/sign-in`}
+                      aria-label={`${label} portal sign in`}
+                    >
+                      Sign in
+                    </Link>
+                    <Link
+                      className="button secondary"
+                      to={`/${key}/sign-up`}
+                      aria-label={`Sign up for the ${key} portal`}
+                    >
+                      Sign up
+                    </Link>
+                  </div>
+                  {key === "doctor" && (
+                    <small>Administrator approval required.</small>
+                  )}
+                </article>
+              ))}
             </div>
           </>
         ) : (
           <>
-            <Link to="/">← Choose another portal</Link>
+            <Link className="account-back" to="/">
+              ← Choose another portal
+            </Link>
             <p className="eyebrow">
               {doctor ? "Doctor portal" : "Patient portal"}
             </p>
             <h1>{titles[mode]}</h1>
-            {signup ? (
-              <p>
-                {doctor
-                  ? "Verify your email, then wait for administrator approval before accessing patient records."
-                  : "Verify your email to open an empty patient profile. Ask your provider to verify your identity and connect existing records."}
-              </p>
-            ) : recovery ? (
-              <p>
-                Enter your registered email. Recovery instructions stay private
-                and are sent only to that address.
-              </p>
-            ) : mode === "sign-in" ? (
-              <p>
-                Use your {doctor ? "doctor" : "patient"} account email or
-                username.
-              </p>
-            ) : mode === "verify-email" ? (
-              <p>Confirm the email link to continue your registration.</p>
-            ) : (
-              <p>
-                Choose a password of at least 12 characters. Your previous
-                sessions will be signed out.
-              </p>
-            )}
+            <p>
+              {signup
+                ? doctor
+                  ? "Create your account, verify your email, then wait for administrator approval."
+                  : "Create your account and verify your email. Your provider can then connect your records after checking your identity."
+                : recovery
+                  ? "Enter your email address. Instructions are sent only to that address if an account matches."
+                  : mode === "sign-in"
+                    ? "Welcome back. Enter your account details."
+                    : mode === "verify-code"
+                      ? `Enter the 6-digit code sent to ${verification.email || "your email address"}. It expires in 10 minutes.`
+                      : mode === "verify-email"
+                        ? "Confirm your email to continue your registration."
+                        : "Choose a password of at least 12 characters. Previous sessions will be signed out."}
+            </p>
             <Notice>{message}</Notice>
             <Notice>{success}</Notice>
             {!success && (
               <form onSubmit={submit} aria-busy={busy}>
                 {signup && (
-                  <>
-                    {field("full_name", "Full name", {
-                      autoComplete: "name",
-                      maxLength: 200,
+                  <div className="name-fields">
+                    {field("first_name", "First name", {
+                      autoComplete: "given-name",
+                      maxLength: 100,
                     })}
-                    {field("username", "Username", {
-                      autoComplete: "username",
-                      minLength: 3,
-                      maxLength: 60,
-                      pattern: "[A-Za-z0-9._-]+",
-                      hint: "3 to 60 letters, numbers, dots, underscores or hyphens.",
+                    {field("last_name", "Last name", {
+                      autoComplete: "family-name",
+                      maxLength: 99,
                     })}
-                  </>
+                  </div>
                 )}
                 {mode === "sign-in" &&
                   field("identifier", "Email or username", {
@@ -207,7 +302,7 @@ export default function AccountEntry({ route, onLogin, message }) {
                     maxLength: 255,
                   })}
                 {(signup || recovery) &&
-                  field("email", "Registered email address", {
+                  field("email", "Email address", {
                     type: "email",
                     autoComplete: "email",
                     maxLength: 255,
@@ -217,12 +312,14 @@ export default function AccountEntry({ route, onLogin, message }) {
                     <>
                       {field("organization", "Hospital or organization", {
                         maxLength: 200,
-                        hint: "Your administrator will verify your organization and assign access.",
                       })}
                       {field(
                         "registration_number",
                         "Medical registration number",
-                        { maxLength: 100 },
+                        {
+                          maxLength: 100,
+                          hint: "Your administrator will check your professional credentials.",
+                        },
                       )}
                     </>
                   ) : (
@@ -232,75 +329,106 @@ export default function AccountEntry({ route, onLogin, message }) {
                     })
                   ))}
                 {password && (
-                  <>
-                    {field("password", "Password", {
-                      type: show ? "text" : "password",
-                      autoComplete:
-                        mode === "sign-in"
-                          ? "current-password"
-                          : "new-password",
-                      minLength: mode === "sign-in" ? 1 : 12,
-                      maxLength: 128,
-                      hint:
+                  <div>
+                    <PasswordField
+                      required
+                      value={values.password || ""}
+                      onChange={(event) =>
+                        setValues({ ...values, password: event.target.value })
+                      }
+                      autoComplete={
+                        mode === "sign-in" ? "current-password" : "new-password"
+                      }
+                      minLength={mode === "sign-in" ? 1 : 12}
+                      maxLength={128}
+                      hint={
                         mode === "sign-in"
                           ? undefined
-                          : "At least 12 characters. You can paste a password from a password manager.",
-                    })}
-                    {mode !== "sign-in" &&
-                      field("confirm", "Confirm password", {
-                        type: show ? "text" : "password",
-                        autoComplete: "new-password",
-                        minLength: 12,
-                        maxLength: 128,
-                      })}
-                    <label className="check">
-                      <input
-                        type="checkbox"
-                        checked={show}
-                        onChange={(event) => setShow(event.target.checked)}
-                      />{" "}
-                      Show password
-                    </label>
-                  </>
+                          : "At least 12 characters. You can paste a password from a password manager."
+                      }
+                    />
+                    {mode === "sign-in" && (
+                      <Link
+                        className="password-recovery"
+                        to={`${prefix}/forgot-password`}
+                      >
+                        Forgot password?
+                      </Link>
+                    )}
+                  </div>
                 )}
+                {mode === "verify-code" &&
+                  field("code", "Verification code", {
+                    inputMode: "numeric",
+                    autoComplete: "one-time-code",
+                    maxLength: 11,
+                    pattern: "[0-9\\s-]{6,11}",
+                    hint: "6 digits. You can paste the code including spaces.",
+                  })}
                 <Notice error>{error}</Notice>
-                <button className="primary full" disabled={busy}>
+                <button
+                  className="primary full"
+                  disabled={busy || (mode === "verify-code" && !challenge)}
+                >
                   {busy
                     ? "Please wait…"
                     : mode === "sign-in"
-                      ? `Sign in to ${doctor ? "doctor" : "patient"} portal`
+                      ? "Sign in"
                       : signup
                         ? "Create account"
-                        : recovery
-                          ? "Send recovery email"
-                          : mode === "verify-email"
-                            ? "Verify email"
-                            : "Save new password"}
+                        : mode === "verify-code"
+                          ? "Verify email"
+                          : mode === "resend-verification"
+                            ? "Send verification email"
+                            : recovery
+                              ? "Send recovery email"
+                              : mode === "verify-email"
+                                ? "Verify email"
+                                : "Save new password"}
                 </button>
+                {mode === "verify-code" && (
+                  <div className="verification-resend">
+                    <button
+                      type="button"
+                      disabled={busy || remaining > 0 || !challenge}
+                      onClick={resend}
+                    >
+                      Resend verification email
+                    </button>
+                    <p className="help" aria-live="off">
+                      {remaining > 0
+                        ? `Resend available in ${remaining} seconds`
+                        : "You can request another code now."}
+                    </p>
+                  </div>
+                )}
               </form>
             )}
             <div className="account-links">
               {mode === "sign-in" ? (
                 <>
-                  <Link to={`${prefix}/sign-up`}>Create an account</Link>
-                  <div>
-                    <Link to={`${prefix}/forgot-username`}>
-                      Forgot username?
-                    </Link>
-                    <Link to={`${prefix}/forgot-password`}>
-                      Forgot password?
+                  <div className="signup-prompt">
+                    <span>New to MedBridge?</span>
+                    <Link className="button secondary" to={`${prefix}/sign-up`}>
+                      Create an account
                     </Link>
                   </div>
+                  <Link to={`${prefix}/forgot-username`}>Forgot username?</Link>
                   <Link to={`${prefix}/resend-verification`}>
-                    Resend verification email
+                    Need to verify your email?
                   </Link>
                 </>
               ) : (
                 <Link
-                  className={success ? "button primary" : undefined}
+                  className={success ? "button primary" : "account-back"}
                   to={`${prefix}/sign-in`}
                 >
                   Return to sign in
+                </Link>
+              )}
+              {mode === "verify-code" && !success && (
+                <Link to={`${prefix}/resend-verification`}>
+                  Use a different email or request a new code
                 </Link>
               )}
               {mode === "reset-password" && (
@@ -308,33 +436,26 @@ export default function AccountEntry({ route, onLogin, message }) {
                   Request a new reset link
                 </Link>
               )}
-              {(mode === "verify-email" || signup) && (
+              {signup && error && (
                 <Link to={`${prefix}/resend-verification`}>
-                  Request a new verification email
+                  Request a verification email
                 </Link>
               )}
             </div>
-            {(recovery || error) && (
+            {(recovery || error || mode === "verify-code") && (
               <details className="recovery-help">
-                <summary>Can’t access your email or still need help?</summary>
+                <summary>Can’t access your email or need help?</summary>
                 <p>
-                  Contact your organization’s MedBridge administrator to verify
-                  your identity. Email addresses and usernames cannot be
-                  revealed using a name or date of birth alone.
+                  Check your spam folder and confirm you are using the correct
+                  portal. Contact your organization’s MedBridge administrator if
+                  you cannot access your email.
                 </p>
                 <p>
-                  Use the portal for your account. Check spam folders. Reset
-                  links expire after 30 minutes and work once; verification
-                  links expire after 24 hours. Doctor email verification still
-                  requires administrator approval.
+                  Email verification confirms access to your inbox. Doctor
+                  accounts also need administrator approval before patient
+                  records are available.
                 </p>
               </details>
-            )}
-            {import.meta.env.DEV && mode !== "sign-in" && (
-              <p className="help">
-                Local testing: messages are captured in the developer mailbox.
-                No email is sent to an external inbox.
-              </p>
             )}
           </>
         )}

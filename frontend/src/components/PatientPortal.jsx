@@ -6,7 +6,7 @@ import MedicalReports from "./MedicalReports";
 import Sharing from "./Sharing";
 import AccessHistory from "./AccessHistory";
 import EmergencyProfile from "./EmergencyProfile";
-import PatientAdministration, { ProfileDetails } from "./PatientAdministration";
+import PatientAdministration from "./PatientAdministration";
 const names = {
   overview: "Overview",
   records: "Records",
@@ -43,7 +43,11 @@ export default function PatientPortal({ token, route, onProfileSaved }) {
       >
         {record && (
           <>
-            <Identity patient={record.patient}>
+            <Identity
+              patient={record.patient}
+              record={record}
+              details={page === "overview"}
+            >
               <PatientAdministration
                 token={token}
                 patient={record.patient}
@@ -70,7 +74,6 @@ export default function PatientPortal({ token, route, onProfileSaved }) {
                     Review emergency details
                   </Link>
                 </div>
-                <ProfileDetails patient={record.patient} />
                 <CriticalInformation record={record} />
                 <RecentVisits record={record} patient />
                 <section className="card next-actions">

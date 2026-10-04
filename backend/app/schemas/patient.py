@@ -54,6 +54,14 @@ class PatientProfileUpdate(BaseModel):
         return EmergencyProfileUpdate.normalize_contact(value, info)
 
 
+class PatientEnrollment(PatientProfileUpdate):
+    full_name: str = Field(min_length=2, max_length=200)
+    date_of_birth: date
+    email: EmailStr
+    password: str = Field(min_length=12, max_length=128)
+    identity_checked: bool
+
+
 class PatientRead(PatientCreate):
     id: int
     has_account: bool = False

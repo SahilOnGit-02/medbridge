@@ -1,6 +1,8 @@
-import { useRef, useState, useEffect } from "react";
+import { lazy, Suspense, useRef, useState, useEffect } from "react";
 import { dateText, request, useRemote } from "../lib";
-import { Empty, Field, Notice, State } from "./UI";
+import { Empty, Field, Modal, Notice, State } from "./UI";
+
+const ReportPreview = lazy(() => import("./ReportPreview"));
 
 export default function MedicalReports({ token, patientId, patient }) {
   const path = patientId
@@ -12,7 +14,14 @@ export default function MedicalReports({ token, patientId, patient }) {
   const [visible, setVisible] = useState(10);
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState("");
-  const [feedback, setFeedback] = useState("");
+  const [preview, setPreview] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState("");
+  useEffect(
+    () => () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    },
+    [previewUrl],
+  );
   const download = useRef(null);
   useEffect(() => () => download.current?.abort(), []);
   const reports = remote.data || [];
@@ -27,12 +36,13 @@ export default function MedicalReports({ token, patientId, patient }) {
         .includes(query.trim().toLowerCase()),
   );
 
-  async function downloadReport(report) {
+  async function openReport(report) {
     const controller = new AbortController();
     download.current = controller;
     setBusy(report.id);
     setError("");
-    setFeedback("");
+    setPreview(report);
+    setPreviewUrl("");
     try {
       // Re-authorize every download, including after sharing has changed.
       const blob = await request(`${path}/${report.id}/file`, token, {
@@ -41,15 +51,7 @@ export default function MedicalReports({ token, patientId, patient }) {
         headers: { Accept: "application/pdf" },
       });
       if (controller.signal.aborted) return;
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = report.file_name;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 30000);
-      setFeedback(`Download started: ${report.title}.`);
+      setPreviewUrl(URL.createObjectURL(blob));
     } catch (failure) {
       if (!controller.signal.aborted) {
         if (failure.status === 403) {
@@ -76,7 +78,7 @@ export default function MedicalReports({ token, patientId, patient }) {
             {patientId
               ? `Reports for ${patient?.full_name || "this patient"}.`
               : "Your reports, newest first."}{" "}
-            Download a PDF to open or save it.
+            Open a report to review it or save a copy.
           </p>
         </div>
         <button
@@ -87,7 +89,58 @@ export default function MedicalReports({ token, patientId, patient }) {
         </button>
       </div>
       <Notice error>{error}</Notice>
-      <Notice>{feedback}</Notice>
+      {preview && (
+        <Modal
+          title={preview.title}
+          onClose={() => {
+            download.current?.abort();
+            setPreview(null);
+            setPreviewUrl("");
+            setBusy(null);
+            setError("");
+          }}
+        >
+          {previewUrl ? (
+            <>
+              <div className="actions report-preview-actions">
+                <a
+                  className="button secondary"
+                  href={previewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Open in new tab
+                </a>
+                <a
+                  className="button secondary"
+                  href={previewUrl}
+                  download={preview.file_name}
+                >
+                  Save a copy
+                </a>
+              </div>
+              <Suspense
+                fallback={<p role="status">Loading document viewer…</p>}
+              >
+                <ReportPreview
+                  key={previewUrl}
+                  url={previewUrl}
+                  title={preview.title}
+                />
+              </Suspense>
+            </>
+          ) : busy !== null ? (
+            <div role="status" className="state">
+              Loading report…
+            </div>
+          ) : (
+            <Notice error>
+              {error ||
+                "This report is no longer available under the current sharing permissions."}
+            </Notice>
+          )}
+        </Modal>
+      )}
       <State
         loading={remote.loading}
         error={remote.error}
@@ -147,10 +200,16 @@ export default function MedicalReports({ token, patientId, patient }) {
                     </div>
                     <button
                       disabled={busy !== null}
-                      onClick={() => downloadReport(report)}
-                      aria-label={`Download PDF: ${report.title}`}
+                      onClick={() => openReport(report)}
+                      aria-label={`Open ${/prescription/i.test(`${report.report_type} ${report.title}`) ? "prescription" : "report"}: ${report.title}`}
                     >
-                      {busy === report.id ? "Preparing PDF…" : "Download PDF"}
+                      {busy === report.id
+                        ? "Opening…"
+                        : /prescription/i.test(
+                              `${report.report_type} ${report.title}`,
+                            )
+                          ? "Open prescription"
+                          : "Open report"}
                     </button>
                   </li>
                 ))}

@@ -238,6 +238,7 @@ def test_recovery_generic_response_private_username_and_throttle(fixture):
     # Recovery is throttled after five attempts for the same key.
     assert len(list(mail.glob("*.json"))) == 5
 
+
 def test_reset_single_use_expiry_portal_binding_session_revocation(fixture):
     client, sessions, mail = fixture
     old = bearer(login(client, "patient", "patient.ux@example.com"))
@@ -364,7 +365,9 @@ def test_resend_verification_and_login_rate_limit(fixture):
         ).status_code
         == 202
     )
-    assert len(list(mail.glob("*.json"))) == 2
+    assert (
+        len(list(mail.glob("*.json"))) == 1
+    )  # Server enforces the 90-second cooldown.
     for _ in range(5):
         assert (
             login(client, "doctor", "doctor.ux@example.com", "wrong").status_code == 401

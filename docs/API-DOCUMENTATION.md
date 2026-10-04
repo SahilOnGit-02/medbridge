@@ -22,6 +22,10 @@ See [authentication](AUTHENTICATION.md), [consent](CONSENT-AND-ACCESS-CONTROL.md
 | POST | `/auth/{portal}/recover/{kind}` | Public | accounts |
 | POST | `/auth/{portal}/reset-password` | Public | accounts |
 | POST | `/auth/{portal}/signup` | Public | accounts |
+| POST | `/auth/{portal}/verification/request` | Public | accounts |
+| POST | `/auth/{portal}/verification/resend` | Public | accounts |
+| POST | `/auth/{portal}/verification/status` | Public | accounts |
+| POST | `/auth/{portal}/verify-code` | Public | accounts |
 | POST | `/auth/{portal}/verify-email` | Public | accounts |
 | POST | `/clinical/allergies` | Bearer | clinical-record |
 | POST | `/clinical/conditions` | Bearer | clinical-record |
@@ -56,6 +60,7 @@ See [authentication](AUTHENTICATION.md), [consent](CONSENT-AND-ACCESS-CONTROL.md
 | GET | `/health` | Public | system |
 | GET | `/patients` | Bearer | patients |
 | POST | `/patients` | Bearer | patients |
+| POST | `/patients/enroll` | Bearer | patients |
 | GET | `/patients/me` | Bearer | patients |
 | GET | `/patients/me/access-history` | Bearer | Patient Access History |
 | GET | `/patients/me/emergency-profile` | Bearer | patients |

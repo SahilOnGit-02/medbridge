@@ -26,7 +26,7 @@ function revealCategory(category) {
     new CustomEvent("reveal-record", { detail: `records-${category}` }),
   );
 }
-export function RecentVisits({ record, patient = false }) {
+export function RecentVisits({ record, patient = false, recordPath }) {
   const visits = [...(record.encounters || [])].sort(newestFirst).slice(0, 3);
   return (
     <section
@@ -39,6 +39,8 @@ export function RecentVisits({ record, patient = false }) {
           <Link to="/my-health/records#records-encounters">
             View all visits →
           </Link>
+        ) : recordPath ? (
+          <Link to={`${recordPath}#records-encounters`}>View all visits →</Link>
         ) : (
           <a
             href="#records-encounters"
@@ -192,6 +194,7 @@ export function CriticalInformation({
   record,
   doctor = false,
   emergency = false,
+  recordPath,
 }) {
   const critical = [
     ["allergies", "Allergies", record.allergies || []],
@@ -262,7 +265,14 @@ export function CriticalInformation({
                   ))}
                 </ul>
                 {!emergency &&
-                  (doctor ? (
+                  (doctor && recordPath ? (
+                    <Link to={`${recordPath}#records-${key}`}>
+                      Review{" "}
+                      {entries.length > 3
+                        ? `all ${entries.length} entries`
+                        : "details"}
+                    </Link>
+                  ) : doctor ? (
                     <a
                       href={`#records-${key}`}
                       onClick={() => {

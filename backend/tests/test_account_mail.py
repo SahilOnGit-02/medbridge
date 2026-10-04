@@ -9,7 +9,7 @@ from pydantic import SecretStr
 from sqlalchemy import select
 
 from app.core.config import settings
-from app.models.account import AccountToken
+from app.models.account import AccountToken, EmailVerification
 from app.models.user import User
 from app.core.security import hash_password
 from app.services import account_mail
@@ -202,6 +202,14 @@ def test_failed_signup_is_resendable_and_recovery_remains_generic(
     )
     assert secret_marker not in response.text + caplog.text
     assert "new.patient@example.com" not in caplog.text
+    # Simulate the required resend interval without slowing the test suite.
+    from datetime import datetime, timedelta
+    from app.models.account import EmailVerification
+
+    with sessions() as db:
+        for row in db.scalars(select(EmailVerification)):
+            row.sent_at = datetime.utcnow() - timedelta(seconds=91)
+        db.commit()
     monkeypatch.setattr(account_mail, "send_account_mail", original)
     assert (
         client.post(

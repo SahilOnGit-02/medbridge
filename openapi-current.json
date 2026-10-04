@@ -1705,6 +1705,115 @@
         "title": "PatientCreate",
         "type": "object"
       },
+      "PatientEnrollment": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "blood_group": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blood Group"
+          },
+          "date_of_birth": {
+            "format": "date",
+            "title": "Date Of Birth",
+            "type": "string"
+          },
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "emergency_contact_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emergency Contact Name"
+          },
+          "emergency_contact_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emergency Contact Phone"
+          },
+          "full_name": {
+            "maxLength": 200,
+            "minLength": 2,
+            "title": "Full Name",
+            "type": "string"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "maxLength": 30,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gender"
+          },
+          "identity_checked": {
+            "title": "Identity Checked",
+            "type": "boolean"
+          },
+          "password": {
+            "maxLength": 128,
+            "minLength": 12,
+            "title": "Password",
+            "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          }
+        },
+        "required": [
+          "full_name",
+          "date_of_birth",
+          "email",
+          "password",
+          "identity_checked"
+        ],
+        "title": "PatientEnrollment",
+        "type": "object"
+      },
       "PatientIdentityResolution": {
         "properties": {
           "hospital": {
@@ -2744,17 +2853,23 @@
             "title": "Registration Number"
           },
           "username": {
-            "maxLength": 60,
-            "minLength": 3,
-            "pattern": "^[A-Za-z0-9._-]+$",
-            "title": "Username",
-            "type": "string"
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "minLength": 3,
+                "pattern": "^[A-Za-z0-9._-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
           }
         },
         "required": [
           "full_name",
           "email",
-          "username",
           "password"
         ],
         "title": "Signup",
@@ -3004,6 +3119,42 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "VerificationChallenge": {
+        "properties": {
+          "challenge": {
+            "maxLength": 100,
+            "minLength": 20,
+            "title": "Challenge",
+            "type": "string"
+          }
+        },
+        "required": [
+          "challenge"
+        ],
+        "title": "VerificationChallenge",
+        "type": "object"
+      },
+      "VerificationCode": {
+        "properties": {
+          "challenge": {
+            "maxLength": 100,
+            "minLength": 20,
+            "title": "Challenge",
+            "type": "string"
+          },
+          "code": {
+            "pattern": "^[0-9]{6}$",
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "challenge",
+          "code"
+        ],
+        "title": "VerificationCode",
         "type": "object"
       }
     },
@@ -3351,6 +3502,206 @@
           }
         },
         "summary": "Signup",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/auth/{portal}/verification/request": {
+      "post": {
+        "operationId": "request_verification_auth__portal__verification_request_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "portal",
+            "required": true,
+            "schema": {
+              "title": "Portal",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Recovery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Request Verification",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/auth/{portal}/verification/resend": {
+      "post": {
+        "operationId": "resend_verification_auth__portal__verification_resend_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "portal",
+            "required": true,
+            "schema": {
+              "title": "Portal",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerificationChallenge"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resend Verification",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/auth/{portal}/verification/status": {
+      "post": {
+        "operationId": "verification_status_auth__portal__verification_status_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "portal",
+            "required": true,
+            "schema": {
+              "title": "Portal",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerificationChallenge"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verification Status",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/auth/{portal}/verify-code": {
+      "post": {
+        "operationId": "verify_code_auth__portal__verify_code_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "portal",
+            "required": true,
+            "schema": {
+              "title": "Portal",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerificationCode"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Code",
         "tags": [
           "accounts"
         ]
@@ -4854,6 +5205,52 @@
           }
         ],
         "summary": "Create Patient",
+        "tags": [
+          "patients"
+        ]
+      }
+    },
+    "/patients/enroll": {
+      "post": {
+        "operationId": "enroll_patient_patients_enroll_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatientEnrollment"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Enroll Patient",
         "tags": [
           "patients"
         ]

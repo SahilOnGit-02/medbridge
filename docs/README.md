@@ -16,3 +16,5 @@ This package describes the current implementation, not a claim of production rea
 | Demonstration | [Demo guide](DEMO-GUIDE.md), [submission checklist](CAPSTONE-SUBMISSION.md) |
 
 API and schema inventories are generated from application metadata by `backend/scripts/generate_reference.py`. Historical UX evidence remains in [portal revision](PORTAL-REVISION.md) and [UX implementation](UX-IMPLEMENTATION.md). Historical architecture and phase notes describe earlier milestones; the documents above are the current handoff.
+
+- [Portal refinements and verification](portal-polish/VERIFICATION.md)
