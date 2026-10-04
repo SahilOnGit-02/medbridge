@@ -20,6 +20,6 @@ Recovery returns a generic 202 response for matching and unknown accounts. Signu
 
 ## Delivery and failures
 
-`ACCOUNT_MAIL_MODE` selects disabled, capture or smtp. Capture requires development and a loopback frontend origin; it writes private JSON messages and sends no external email. SMTP uses STARTTLS or implicit TLS with certificate/hostname verification and optional paired username/password authentication. Production links require a non-loopback HTTPS origin without credentials, path, query or fragment.
+`ACCOUNT_MAIL_MODE` selects disabled, capture or smtp. Capture requires development and a loopback frontend origin; it writes private JSON messages and sends no external email. SMTP uses STARTTLS or implicit TLS with certificate/hostname verification and optional paired username/password authentication. Existing SMTP_FROM_EMAIL and SMTP_FROM_NAME settings remain supported. If SMTP_SECURITY is omitted, port 465 uses implicit TLS and other ports use STARTTLS. Production links require a non-loopback HTTPS origin without credentials, path, query or fragment.
 
 User/token state commits before sending. A failed signup email returns 503, keeps the pending registration and instructs the user to resend verification. Recovery delivery failures are logged without recipient, token, password or provider error content, while retaining the same generic response. There is no automatic delivery retry; use resend and inspect service logs. Real inbox delivery remains pending provider configuration.

@@ -7,6 +7,7 @@ from app.db.session import SessionLocal
 from app.models.hospital import Hospital
 from app.models.medical_report import MedicalReport
 from app.models.patient import Patient
+from app.models.user import User
 
 
 REPORTS = [
@@ -62,15 +63,26 @@ def main():
     db = SessionLocal()
 
     try:
+        patient_user = db.scalar(
+            select(User).where(
+                User.email == "patient.demo@medbridge.in"
+            )
+        )
+
+        if patient_user is None:
+            raise RuntimeError(
+                "Demo patient account was not found."
+            )
+
         patient = db.scalar(
             select(Patient).where(
-                Patient.medbridge_id == "MB-DEMO-001"
+                Patient.user_id == patient_user.id
             )
         )
 
         if patient is None:
             raise RuntimeError(
-                "Aarav Sharma (MB-DEMO-001) was not found."
+                "Patient profile for patient.demo@medbridge.in was not found."
             )
 
         source_hospital = db.scalar(

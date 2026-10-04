@@ -535,3 +535,51 @@ def test_patient_reactivation_updates_sharing_scopes():
     assert data["share_prescriptions"] is True
     assert data["share_observations"] is False
     assert data["share_encounters"] is True
+
+def test_patient_can_update_medical_report_sharing_scope():
+    token = login_as_patient()
+
+    db = TestingSessionLocal()
+    consent = PatientHospitalConsent(
+        patient_id=1,
+        hospital_id=1,
+        status="active",
+        purpose="Initial sharing",
+        share_allergies=True,
+        share_medications=True,
+        share_conditions=True,
+        share_prescriptions=True,
+        share_observations=True,
+        share_encounters=True,
+        share_reports=True,
+        granted_at=datetime(2026, 9, 25, 10, 0, 0),
+    )
+    db.add(consent)
+    db.commit()
+    db.refresh(consent)
+    consent_id = consent.id
+    db.close()
+
+    response = client.patch(
+        f"/consents/me/{consent_id}",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "hospital_id": 1,
+            "purpose": "Updated sharing",
+            "share_allergies": True,
+            "share_medications": True,
+            "share_conditions": True,
+            "share_prescriptions": True,
+            "share_observations": True,
+            "share_encounters": True,
+            "share_reports": False,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["share_reports"] is False
+
+    db = TestingSessionLocal()
+    updated = db.get(PatientHospitalConsent, consent_id)
+    assert updated.share_reports is False
+    db.close()

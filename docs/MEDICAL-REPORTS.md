@@ -16,4 +16,4 @@ Metadata uses the MedicalReport model. The file resolver uses `file_name`, not a
 
 ## Demo boundaries
 
-`backend/seed_medical_reports.py` is an explicit demo script targeting its defined `MB-DEMO-001` patient and source hospital. It is not run automatically and must not attach another person's report to an unrelated profile. The bundled reports are synthetic examples. Other profiles may correctly show an empty report list until matching report metadata is seeded. No report upload interface, object storage integration or report generation service is implemented.
+`backend/seed_medical_reports.py` is an explicit demo script targeting the profile linked to `patient.demo@medbridge.in` and its defined source hospital. It is not run automatically and must not attach another person's report to an unrelated profile. The bundled reports are synthetic examples. Other profiles may correctly show an empty report list until matching report metadata is seeded. No report upload interface, object storage integration or report generation service is implemented.

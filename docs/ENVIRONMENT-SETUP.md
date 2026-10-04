@@ -32,9 +32,10 @@ Set `VITE_API_BASE_URL` to the target backend before a hosted build. It is publi
 | CORS_ORIGINS | JSON list of exact allowed frontend origins |
 | ACCOUNT_MAIL_MODE | disabled, capture or smtp |
 | ACCOUNT_MAILBOX_DIR | Private absolute directory for local capture |
-| ACCOUNT_MAIL_FROM | Provider-verified sender address for SMTP |
+| ACCOUNT_MAIL_FROM / SMTP_FROM_EMAIL | Provider-verified sender; the existing SMTP_FROM_EMAIL name remains supported |
+| SMTP_FROM_NAME | Display name; defaults to MedBridge System |
 | SMTP_HOST / SMTP_PORT | Provider hostname and port |
-| SMTP_SECURITY | starttls or ssl; no plaintext mode |
+| SMTP_SECURITY | starttls or ssl; if omitted, port 465 uses ssl and other ports use starttls |
 | SMTP_USERNAME / SMTP_PASSWORD | Configure both or neither, according to provider requirements |
 | SMTP_TIMEOUT_SECONDS | Socket timeout, 1 to 30 seconds; default 10 |
 

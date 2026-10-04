@@ -253,3 +253,26 @@ def test_capture_cannot_be_enabled_on_production(fixture, monkeypatch):
     monkeypatch.setattr(settings, "app_env", "production")
     with pytest.raises(HTTPException):
         account_mail.delivery_ready()
+
+
+def test_existing_smtp_sender_environment_remains_compatible(monkeypatch):
+    from app.core.config import Settings
+
+    monkeypatch.delenv("ACCOUNT_MAIL_FROM", raising=False)
+    monkeypatch.setenv("SMTP_FROM_EMAIL", "legacy-sender@example.com")
+    configured = Settings(_env_file=None, jwt_secret_key="isolated-test-secret")
+    assert configured.account_mail_from == "legacy-sender@example.com"
+    assert configured.smtp_port == 465 and configured.smtp_security is None
+
+
+@pytest.mark.parametrize("port,expected_tls", [(465, False), (587, True)])
+def test_legacy_port_chooses_verified_tls_mode(smtp, monkeypatch, port, expected_tls):
+    monkeypatch.setattr(settings, "smtp_security", None)
+    monkeypatch.setattr(settings, "smtp_port", port)
+    account_mail.send_account_mail(
+        "recipient@example.com", "Synthetic compatibility", "test"
+    )
+    calls = smtp[1]
+    assert any(kind == "tls" for kind, _ in calls) is expected_tls
+    if not expected_tls:
+        assert calls[0][1]["context"].check_hostname

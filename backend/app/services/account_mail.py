@@ -55,7 +55,7 @@ def delivery_ready():
         settings.account_mail_mode == "smtp"
         and settings.smtp_host
         and settings.account_mail_from
-        and settings.smtp_security in {"starttls", "ssl"}
+        and settings.smtp_security in {None, "starttls", "ssl"}
         and bool(settings.smtp_username) == bool(settings.smtp_password)
     )
     if not valid_url or not (capture or smtp):
@@ -88,21 +88,26 @@ def send_account_mail(email, subject, body):
         return
 
     message = EmailMessage()
-    message["From"] = formataddr(("MedBridge", str(settings.account_mail_from)))
+    message["From"] = formataddr(
+        (settings.smtp_from_name, str(settings.account_mail_from))
+    )
     message["To"] = email
     message["Subject"] = subject
     message.set_content(body)
+    security = settings.smtp_security or (
+        "ssl" if settings.smtp_port == 465 else "starttls"
+    )
     context = ssl.create_default_context()
-    connection = smtplib.SMTP_SSL if settings.smtp_security == "ssl" else smtplib.SMTP
+    connection = smtplib.SMTP_SSL if security == "ssl" else smtplib.SMTP
     kwargs = {
         "host": settings.smtp_host,
         "port": settings.smtp_port,
         "timeout": settings.smtp_timeout_seconds,
     }
-    if settings.smtp_security == "ssl":
+    if security == "ssl":
         kwargs["context"] = context
     with connection(**kwargs) as smtp:
-        if settings.smtp_security == "starttls":
+        if security == "starttls":
             smtp.ehlo()
             smtp.starttls(context=context)
             smtp.ehlo()

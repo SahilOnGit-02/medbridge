@@ -1,12 +1,12 @@
 # Finalization verification
 
-Verification date: 4 October 2026. Branch: `codex/medbridge-finalization`, based on merged main `70172e2384344e74eac8d736be148ef581175b5a`.
+Verification date: 4 October 2026. Branch: `codex/medbridge-finalization`, started from `70172e2384344e74eac8d736be148ef581175b5a` and incorporates main through `9804fe3` (including the newer SMTP, hosted API URL, container port, consent test and report seed changes).
 
 ## Completed checks
 
 | Check | Result | Evidence / boundary |
 |---|---|---|
-| Backend regression | 130 tests passed | Isolated SQLite fixtures; 2,298 existing/deprecation warnings reported in the final run |
+| Backend regression | 134 tests passed | Isolated SQLite fixtures; 2,312 existing/deprecation warnings reported in the final run |
 | Frontend lint | Passed | ESLint |
 | Frontend production build | Passed | Vite build; no deployed release implied |
 | API/database references | Current | Metadata-generated OpenAPI, 57 paths, API inventory, ER/column inventory and n8n node inventory |
