@@ -11,7 +11,6 @@ from app.api.consents import router as consents_router
 from app.api.emergency import router as emergency_router
 from app.api.patient_access import router as patient_access_router
 from app.api.medical_reports import router as medical_reports_router
-from app.api.internal_seed import router as internal_seed_router
 
 app = FastAPI(title="MedBridge API", version="0.2.0")
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
@@ -46,4 +45,3 @@ app.include_router(accounts_router)
 app.include_router(patient_access_router)
 app.include_router(medical_reports_router)
 app.include_router(accounts_router)
-app.include_router(internal_seed_router)

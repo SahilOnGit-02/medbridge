@@ -1,9 +1,11 @@
 """Separate portal entry, verified signup and local-only recovery delivery."""
 
 from datetime import date, datetime, timedelta
+from email.message import EmailMessage
 from hashlib import sha256
 import json
 import os
+import smtplib
 from pathlib import Path
 import secrets
 from urllib.parse import quote, urlparse
@@ -87,21 +89,71 @@ def portal_roles(portal):
 
 
 def delivery_ready():
-    # Capture is a developer mailbox, never a publicly readable endpoint.
-    origin = urlparse(settings.public_app_url)
-    if (
-        settings.app_env != "development"
-        or settings.account_mail_mode != "capture"
-        or not settings.account_mailbox_dir
-        or origin.hostname not in {"localhost", "127.0.0.1"}
-    ):
-        raise HTTPException(
-            503, "Account email delivery is not configured. Contact your administrator."
-        )
+    if settings.account_mail_mode == "capture":
+        origin = urlparse(settings.public_app_url)
+        if (
+            settings.app_env != "development"
+            or not settings.account_mailbox_dir
+            or origin.hostname not in {"localhost", "127.0.0.1"}
+        ):
+            raise HTTPException(
+                503,
+                "Account email delivery is not configured. Contact your administrator.",
+            )
+        return
+
+    if settings.account_mail_mode == "smtp":
+        if not all(
+            [
+                settings.smtp_host,
+                settings.smtp_port,
+                settings.smtp_username,
+                settings.smtp_password,
+                settings.smtp_from_email,
+            ]
+        ):
+            raise HTTPException(
+                503,
+                "Account SMTP delivery is not configured. Contact your administrator.",
+            )
+        return
+
+    raise HTTPException(
+        503,
+        "Account email delivery is not configured. Contact your administrator.",
+    )
 
 
 def capture_mail(email, subject, body):
     delivery_ready()
+
+    if settings.account_mail_mode == "smtp":
+        message = EmailMessage()
+        message["From"] = (
+            f"{settings.smtp_from_name} <{settings.smtp_from_email}>"
+        )
+        message["To"] = email
+        message["Subject"] = subject
+        message.set_content(body)
+
+        try:
+            with smtplib.SMTP_SSL(
+                settings.smtp_host,
+                settings.smtp_port,
+                timeout=20,
+            ) as server:
+                server.login(
+                    settings.smtp_username,
+                    settings.smtp_password,
+                )
+                server.send_message(message)
+        except (OSError, smtplib.SMTPException) as exc:
+            raise HTTPException(
+                503,
+                "Unable to deliver account email. Please try again later.",
+            ) from exc
+        return
+
     mailbox = Path(settings.account_mailbox_dir)
     mailbox.mkdir(parents=True, exist_ok=True, mode=0o700)
     destination = (
