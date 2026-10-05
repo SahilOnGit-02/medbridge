@@ -12,6 +12,7 @@ from app.api.clinical import require_patient_hospital_access
 from app.api.deps import get_current_patient, get_current_user
 from app.db.session import get_db
 from app.models.patient import Patient
+from app.models.hospital import Hospital
 from app.models.audit import AuditLog
 from app.core.audit import log_audit_event
 from app.core.security import hash_password
@@ -39,6 +40,8 @@ from app.schemas.patient import (
     EmergencyConditionRead,
     EmergencyProfileRead,
     EmergencyProfileUpdate,
+    PatientIdentityLookup,
+    PatientHospitalConnect,
 )
 from app.schemas.clinical import (
     MappingRead,
@@ -70,6 +73,55 @@ def get_my_patient_profile(
     current_patient: Patient = Depends(get_current_patient),
 ):
     return current_patient
+
+
+@router.post("/me/connect", response_model=MappingRead, status_code=201)
+def connect_my_hospital(
+    payload: PatientHospitalConnect,
+    db: Session = Depends(get_db),
+    current_patient: Patient = Depends(get_current_patient),
+):
+    hospital_code = payload.hospital_code.strip()
+
+    hospital = db.scalar(
+        select(Hospital).where(
+            func.lower(Hospital.code) == hospital_code.lower()
+        )
+    )
+
+    if not hospital:
+        raise HTTPException(
+            status_code=404,
+            detail="Hospital code not found",
+        )
+
+    existing_mapping = db.scalar(
+        select(PatientHospitalMapping).where(
+            PatientHospitalMapping.patient_id == current_patient.id,
+            PatientHospitalMapping.hospital_id == hospital.id,
+        )
+    )
+
+    if existing_mapping:
+        return MappingRead.model_validate(existing_mapping).model_copy(
+            update={"hospital_name": hospital.name}
+        )
+
+    mapping = PatientHospitalMapping(
+        patient_id=current_patient.id,
+        hospital_id=hospital.id,
+        external_patient_id=current_patient.medbridge_id,
+        source_system="MedBridge patient connection",
+    )
+
+    db.add(mapping)
+    db.commit()
+    db.refresh(mapping)
+
+    return MappingRead.model_validate(mapping).model_copy(
+        update={"hospital_name": hospital.name}
+    )
+
 
 
 @router.patch("/me/profile", response_model=PatientRead)
@@ -129,6 +181,49 @@ def list_patients(
     query = query.order_by(func.lower(Patient.full_name).asc(), Patient.id.asc())
 
     return db.scalars(query).unique().all()
+
+
+@router.get(
+    "/identity/{medbridge_id}",
+    response_model=PatientIdentityLookup,
+)
+def lookup_patient_identity(
+    medbridge_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    if current_user.role not in {"doctor", "hospital_admin"}:
+        raise HTTPException(
+            status_code=403,
+            detail="Only doctors and hospital administrators can look up patient identity",
+        )
+
+    patient = db.scalar(
+        select(Patient).where(Patient.medbridge_id == medbridge_id.strip())
+    )
+
+    if not patient:
+        raise HTTPException(
+            status_code=404,
+            detail="Patient not found",
+        )
+
+    connected = False
+
+    if current_user.hospital_id is not None:
+        connected = db.scalar(
+            select(PatientHospitalMapping.id).where(
+                PatientHospitalMapping.patient_id == patient.id,
+                PatientHospitalMapping.hospital_id == current_user.hospital_id,
+            )
+        ) is not None
+
+    return PatientIdentityLookup(
+        medbridge_id=patient.medbridge_id,
+        full_name=patient.full_name,
+        date_of_birth=patient.date_of_birth,
+        connected=connected,
+    )
 
 
 @router.get("/recent", response_model=list[RecentPatientRead])

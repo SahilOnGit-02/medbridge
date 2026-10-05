@@ -174,3 +174,13 @@ class EmergencyProfileUpdate(BaseModel):
                 "Enter 7 to 15 digits with an optional leading + country code"
             )
         return cleaned
+
+class PatientIdentityLookup(BaseModel):
+    medbridge_id: str
+    full_name: str
+    date_of_birth: date | None = None
+    connected: bool
+
+
+class PatientHospitalConnect(BaseModel):
+    hospital_code: str = Field(min_length=1, max_length=32)

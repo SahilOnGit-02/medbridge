@@ -335,6 +335,154 @@ def test_hospital_doctor_search_cannot_find_other_hospital_patient():
     assert response.status_code == 200
     assert response.json() == []
 
+def test_doctor_can_lookup_unconnected_patient_identity():
+    token = login_as_hospital_a_doctor()
+
+    response = client.get(
+        "/patients/identity/MB-TEST-B-001",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data == {
+        "medbridge_id": "MB-TEST-B-001",
+        "full_name": "Test Patient B",
+        "date_of_birth": "2001-02-02",
+        "connected": False,
+    }
+
+
+def test_doctor_identity_lookup_reports_connected_patient():
+    token = login_as_hospital_a_doctor()
+
+    response = client.get(
+        "/patients/identity/MB-TEST-A-001",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["medbridge_id"] == "MB-TEST-A-001"
+    assert data["connected"] is True
+
+
+def test_patient_can_connect_to_hospital_using_hospital_code():
+    token = login_as_patient()
+
+    response = client.post(
+        "/patients/me/connect",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"hospital_code": "TEST-B"},
+    )
+
+    assert response.status_code == 201
+
+    data = response.json()
+
+    assert data["hospital_name"] == "Test Hospital B"
+
+    db = TestingSessionLocal()
+
+    mapping = (
+        db.query(PatientHospitalMapping)
+        .filter_by(
+            patient_id=1,
+            hospital_id=2,
+        )
+        .first()
+    )
+
+    assert mapping is not None
+    assert mapping.external_patient_id == "MB-TEST-A-001"
+    assert mapping.source_system == "MedBridge patient connection"
+
+    db.close()
+
+
+def test_patient_cannot_connect_with_invalid_hospital_code():
+    token = login_as_patient()
+
+    response = client.post(
+        "/patients/me/connect",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"hospital_code": "DOES-NOT-EXIST"},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Hospital code not found"
+
+
+def test_patient_cannot_connect_same_hospital_twice():
+    token = login_as_patient()
+
+    first_response = client.post(
+        "/patients/me/connect",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"hospital_code": "TEST-A"},
+    )
+
+    assert first_response.status_code == 201
+
+    db = TestingSessionLocal()
+
+    before_count = (
+        db.query(PatientHospitalMapping)
+        .filter_by(
+            patient_id=1,
+            hospital_id=1,
+        )
+        .count()
+    )
+
+    db.close()
+
+    second_response = client.post(
+        "/patients/me/connect",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"hospital_code": "TEST-A"},
+    )
+
+    assert second_response.status_code == 201
+
+    db = TestingSessionLocal()
+
+    after_count = (
+        db.query(PatientHospitalMapping)
+        .filter_by(
+            patient_id=1,
+            hospital_id=1,
+        )
+        .count()
+    )
+
+    db.close()
+
+    assert before_count == 1
+    assert after_count == 1
+
+def test_doctor_identity_lookup_does_not_grant_clinical_access():
+    token = login_as_hospital_a_doctor()
+
+    identity_response = client.get(
+        "/patients/identity/MB-TEST-B-001",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert identity_response.status_code == 200
+    assert identity_response.json()["connected"] is False
+
+    clinical_response = client.get(
+        "/clinical/patients/2/record",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert clinical_response.status_code == 403
+
 def test_doctor_cannot_create_hospital():
     token = login_as_hospital_a_doctor()
 

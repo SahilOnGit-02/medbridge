@@ -189,6 +189,84 @@ function SharingEditor({ provider, consent, token, onSaved, onCancel }) {
     </div>
   );
 }
+function ConnectProvider({ token, onConnected }) {
+  const [hospitalCode, setHospitalCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+
+  async function connect(event) {
+    event.preventDefault();
+
+    const code = hospitalCode.trim();
+
+    if (!code) {
+      setError("Enter the hospital code provided by your care provider.");
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const result = await request("/patients/me/connect", token, {
+        method: "POST",
+        body: JSON.stringify({
+          hospital_code: code,
+        }),
+      });
+
+      setHospitalCode("");
+      setMessage(
+        `${result.hospital_name || "Hospital"} connected successfully. You can now choose what information to share.`,
+      );
+
+      if (onConnected) {
+        onConnected();
+      }
+    } catch (failure) {
+      setError(failure.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <article className="card provider-card">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Connect your care provider</p>
+          <h3>Connect a hospital</h3>
+          <p>
+            Enter the hospital code provided by your care provider. Connecting
+            a hospital does not automatically share your medical records.
+          </p>
+        </div>
+      </div>
+
+      <form onSubmit={connect}>
+        <Field
+          label="Hospital code"
+          required
+          maxLength={32}
+          value={hospitalCode}
+          onChange={(event) => setHospitalCode(event.target.value)}
+          placeholder="Example: HOSPITAL-A"
+        />
+
+        <Notice error>{error}</Notice>
+        <Notice>{message}</Notice>
+
+        <div className="actions end">
+          <button className="primary" disabled={busy}>
+            {busy ? "Connecting…" : "Connect hospital"}
+          </button>
+        </div>
+      </form>
+    </article>
+  );
+}
 export default function Sharing({ token, providers }) {
   const remote = useRemote("/consents/me", token);
   const [editing, setEditing] = useState(null);
@@ -226,6 +304,11 @@ export default function Sharing({ token, providers }) {
   }
   return (
     <section>
+      <ConnectProvider
+        token={token}
+        onConnected={() => window.location.reload()}
+      />
+
       <div className="section-heading">
         <div>
           <p className="eyebrow">Your information, your choice</p>

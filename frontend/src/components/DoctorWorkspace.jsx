@@ -15,32 +15,58 @@ import MedicalReports from "./MedicalReports";
 import EmergencyAccess from "./EmergencyAccess";
 import PatientAdministration from "./PatientAdministration";
 import CreatePatientForm from "./CreatePatientForm";
+
 function PatientCard({ patient, onSelect, recent = false }) {
+  const connected = patient.connected !== false;
+
   return (
     <article className="patient-result">
       <div>
         <h3>{patient.full_name}</h3>
         <p>Date of birth: {dateText(patient.date_of_birth)}</p>
         <p className="record-meta">{patient.medbridge_id}</p>
+
         {recent && (
           <p className="record-meta">
             Opened: {dateText(patient.last_viewed_at, true)}
           </p>
         )}
+
+        {!recent && (
+          <p className="record-meta">
+            {connected
+              ? "✓ Connected to your hospital"
+              : "⚠ Not connected to your hospital"}
+          </p>
+        )}
       </div>
-      <button
-        onClick={() => onSelect(patient)}
-        aria-label={`Open record for ${patient.full_name}, ${patient.medbridge_id}`}
-      >
-        Open record
-      </button>
+
+      {connected ? (
+        <button
+          onClick={() => onSelect(patient)}
+          aria-label={`Open record for ${patient.full_name}, ${patient.medbridge_id}`}
+        >
+          Open record
+        </button>
+      ) : (
+        <span className="record-meta">
+          Patient must connect this hospital
+        </span>
+      )}
     </article>
   );
 }
-function PatientSearch({ token, initialPatients, onSelect, compact = false }) {
+
+function PatientSearch({
+  token,
+  initialPatients,
+  onSelect,
+  compact = false,
+}) {
   const [query, setQuery] = useState("");
   const [dob, setDob] = useState("");
   const [results, setResults] = useState(null);
+  const [identityResult, setIdentityResult] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [page, setPage] = useState(0);
@@ -48,6 +74,7 @@ function PatientSearch({ token, initialPatients, onSelect, compact = false }) {
   const suggestionId = useId();
   const [suggesting, setSuggesting] = useState(false);
   const [active, setActive] = useState(-1);
+
   const suggestions = (initialPatients || [])
     .filter(
       (patient) =>
@@ -61,18 +88,23 @@ function PatientSearch({ token, initialPatients, onSelect, compact = false }) {
         (!dob || patient.date_of_birth === dob),
     )
     .slice(0, 8);
+
   const expanded = suggesting && suggestions.length > 0;
+
   function choose(row) {
     setSuggesting(false);
     setActive(-1);
     onSelect(row);
   }
+
   function keys(event) {
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       if (!suggestions.length) return;
+
       event.preventDefault();
       setSuggesting(true);
-      if (!event.altKey)
+
+      if (!event.altKey) {
         setActive((index) =>
           event.key === "ArrowDown"
             ? (index + 1) % suggestions.length
@@ -80,6 +112,7 @@ function PatientSearch({ token, initialPatients, onSelect, compact = false }) {
               ? suggestions.length - 1
               : (index - 1 + suggestions.length) % suggestions.length,
         );
+      }
     } else if (event.key === "Escape") {
       setSuggesting(false);
       setActive(-1);
@@ -88,43 +121,100 @@ function PatientSearch({ token, initialPatients, onSelect, compact = false }) {
       choose(suggestions[active]);
     }
   }
+
   useEffect(() => {
-    if (expanded && active >= 0)
+    if (expanded && active >= 0) {
       document
         .getElementById(`${suggestionId}-${active}`)
         ?.scrollIntoView({ block: "nearest" });
+    }
   }, [active, expanded, suggestionId]);
+
   async function search(event) {
     event.preventDefault();
     setSuggesting(false);
     setActive(-1);
+
     if (!query.trim() && !dob && compact) {
       setError(
         "Enter a patient name, MedBridge ID or date of birth to search.",
       );
       return;
     }
+
     const run = ++sequence.current;
+
     setBusy(true);
     setError("");
+    setIdentityResult(null);
+
     try {
       const params = new URLSearchParams();
-      if (query.trim()) params.set("q", query.trim().replace(/\s+/g, " "));
-      if (dob) params.set("date_of_birth", dob);
-      const data = params.size
-        ? await request(`/patients/search?${params}`, token)
-        : initialPatients;
+
+      if (query.trim()) {
+        params.set("q", query.trim().replace(/\s+/g, " "));
+      }
+
+      if (dob) {
+        params.set("date_of_birth", dob);
+      }
+
+      let data = [];
+
+      if (params.size) {
+        data = await request(`/patients/search?${params}`, token);
+
+        /*
+         * If no connected patient was found and the query looks like
+         * a MedBridge ID, perform the limited identity lookup.
+         *
+         * This does NOT grant clinical access.
+         */
+        const normalizedQuery = query.trim().replace(/\s+/g, " ");
+
+        if (
+          !data.length &&
+          normalizedQuery &&
+          /^MB-[A-Z0-9-]+$/i.test(normalizedQuery)
+        ) {
+          try {
+            const identity = await request(
+              `/patients/identity/${encodeURIComponent(normalizedQuery)}`,
+              token,
+            );
+
+            if (sequence.current === run) {
+              setIdentityResult(identity);
+            }
+          } catch (identityFailure) {
+            if (identityFailure.status === 404) {
+              setIdentityResult(null);
+            } else {
+              throw identityFailure;
+            }
+          }
+        }
+      } else {
+        data = initialPatients || [];
+      }
+
       if (sequence.current === run) {
         setResults(data);
         setPage(0);
       }
     } catch (failure) {
-      if (sequence.current === run) setError(failure.message);
+      if (sequence.current === run) {
+        setError(failure.message);
+      }
     } finally {
-      if (sequence.current === run) setBusy(false);
+      if (sequence.current === run) {
+        setBusy(false);
+      }
     }
   }
+
   const patients = results ?? initialPatients ?? [];
+
   return (
     <section
       id="patient-search"
@@ -153,12 +243,15 @@ function PatientSearch({ token, initialPatients, onSelect, compact = false }) {
             aria-expanded={expanded}
             aria-controls={suggestionId}
             aria-activedescendant={
-              expanded && active >= 0 ? `${suggestionId}-${active}` : undefined
+              expanded && active >= 0
+                ? `${suggestionId}-${active}`
+                : undefined
             }
             autoComplete="off"
             placeholder="Start typing a patient’s name"
             hint="Choose a match after comparing name, date of birth and ID."
           />
+
           <ul
             id={suggestionId}
             role="listbox"
@@ -177,11 +270,13 @@ function PatientSearch({ token, initialPatients, onSelect, compact = false }) {
               >
                 <strong>{patient.full_name}</strong>
                 <span>
-                  DOB {dateText(patient.date_of_birth)} · {patient.medbridge_id}
+                  DOB {dateText(patient.date_of_birth)} ·{" "}
+                  {patient.medbridge_id}
                 </span>
               </li>
             ))}
           </ul>
+
           {suggesting && query.trim() && (
             <span className="sr-only" role="status">
               {suggestions.length
@@ -190,6 +285,7 @@ function PatientSearch({ token, initialPatients, onSelect, compact = false }) {
             </span>
           )}
         </div>
+
         <Field
           label="Date of birth (optional)"
           type="date"
@@ -197,10 +293,12 @@ function PatientSearch({ token, initialPatients, onSelect, compact = false }) {
           onChange={(event) => setDob(event.target.value)}
           hint={compact ? undefined : "Use on its own or with a name or ID."}
         />
+
         <div className="actions">
           <button className="primary" disabled={busy}>
             {busy ? "Searching…" : "Find patient"}
           </button>
+
           <button
             type="button"
             onClick={() => {
@@ -208,6 +306,7 @@ function PatientSearch({ token, initialPatients, onSelect, compact = false }) {
               setQuery("");
               setDob("");
               setResults(null);
+              setIdentityResult(null);
               setPage(0);
               setError("");
               setBusy(false);
@@ -217,26 +316,52 @@ function PatientSearch({ token, initialPatients, onSelect, compact = false }) {
           </button>
         </div>
       </form>
+
       <Notice error>{error}</Notice>
+
+      {identityResult && (
+        <section className="card" aria-label="Patient identity result">
+          <PatientCard
+            patient={identityResult}
+            onSelect={onSelect}
+          />
+
+          {!identityResult.connected && (
+            <p className="help">
+              This patient exists in MedBridge but is not connected to your
+              hospital. The patient must connect your hospital from their
+              MedBridge account before you can access their clinical record.
+            </p>
+          )}
+        </section>
+      )}
+
       {(!compact || results !== null) && (
         <>
           <h2 id="patient-directory">
             {results === null ? "All accessible patients" : "Search results"}
           </h2>
+
           <p role="status" className="result-count">
             {busy
               ? "Searching accessible patients…"
-              : `${patients.length} ${results ? "matching" : "accessible"} ${patients.length === 1 ? "patient" : "patients"}`}
+              : `${patients.length} ${
+                  results ? "matching" : "accessible"
+                } ${patients.length === 1 ? "patient" : "patients"}`}
           </p>
+
           {patients.length ? (
             <div className="patient-list">
-              {patients.slice(page * 10, (page + 1) * 10).map((patient) => (
-                <PatientCard
-                  key={patient.id}
-                  patient={patient}
-                  onSelect={onSelect}
-                />
-              ))}
+              {patients
+                .slice(page * 10, (page + 1) * 10)
+                .map((patient) => (
+                  <PatientCard
+                    key={patient.id}
+                    patient={patient}
+                    onSelect={onSelect}
+                  />
+                ))}
+
               {patients.length > 10 && (
                 <nav
                   className="list-pagination"
@@ -248,10 +373,13 @@ function PatientSearch({ token, initialPatients, onSelect, compact = false }) {
                   >
                     Previous patients
                   </button>
+
                   <span role="status">
-                    {page * 10 + 1}–{Math.min((page + 1) * 10, patients.length)}{" "}
-                    of {patients.length}
+                    {page * 10 + 1}–
+                    {Math.min((page + 1) * 10, patients.length)} of{" "}
+                    {patients.length}
                   </span>
+
                   <button
                     disabled={(page + 1) * 10 >= patients.length}
                     onClick={() => setPage((value) => value + 1)}
@@ -279,6 +407,7 @@ function PatientSearch({ token, initialPatients, onSelect, compact = false }) {
     </section>
   );
 }
+
 function PatientRecord({
   id,
   page,
@@ -294,9 +423,11 @@ function PatientRecord({
   const record = remote.data;
   const patient = record?.patient || knownPatient;
   const recordPath = `/patients/${id}/records`;
+
   useEffect(() => {
     if (record) onViewed();
   }, [record, onViewed]);
+
   return (
     <>
       <Breadcrumbs
@@ -307,10 +438,15 @@ function PatientRecord({
             page ? `/patients/${id}` : undefined,
           ],
           ...(page
-            ? [[page === "records" ? "Record history" : "Medical reports"]]
+            ? [[
+                page === "records"
+                  ? "Record history"
+                  : "Medical reports",
+              ]]
             : []),
         ]}
       />
+
       <Identity patient={patient} record={record} details={!page}>
         {patient && (
           <PatientAdministration
@@ -324,6 +460,7 @@ function PatientRecord({
             }}
           />
         )}
+
         <button
           className="primary emergency-button"
           disabled={!patient}
@@ -332,7 +469,9 @@ function PatientRecord({
           Emergency access
         </button>
       </Identity>
+
       <Notice>{feedback}</Notice>
+
       <State
         loading={remote.loading}
         error={remote.error}
@@ -346,11 +485,14 @@ function PatientRecord({
                 doctor
                 recordPath={recordPath}
               />
+
               <RecentVisits record={record} recordPath={recordPath} />
+
               <div className="overview-actions">
                 <Link className="button secondary" to={recordPath}>
                   View record history
                 </Link>
+
                 <Link
                   className="button secondary"
                   to={`/patients/${id}/reports`}
@@ -373,36 +515,48 @@ function PatientRecord({
     </>
   );
 }
+
 export default function DoctorWorkspace({ token, route, user }) {
   const directory = useRemote("/patients", token);
+
   const recent = useRemote(
-    route === "/patients/recent" ? "/patients/recent?limit=20" : null,
+    route === "/patients/recent"
+      ? "/patients/recent?limit=20"
+      : null,
     token,
   );
+
   const [emergencyStatus, setEmergencyStatus] = useState({
     checking: true,
     activePatientId: null,
   });
+
   const [selected, setSelected] = useState(null);
   const [emergencyPatient, setEmergencyPatient] = useState(null);
   const [feedback, setFeedback] = useState("");
+
   const match = route.match(/^\/patients\/(\d+)(?:\/(records|reports))?$/);
   const id = match?.[1];
   const page = match?.[2];
+
   const patient =
     selected?.id === Number(id)
       ? selected
       : directory.data?.find((row) => row.id === Number(id));
+
   const open = (row) => {
     setSelected(row);
     navigate(`/patients/${row.id}`);
   };
+
   const home = route === "/patients";
   const listing = route === "/patients/directory";
   const recentlyOpened = route === "/patients/recent";
+
   const approvals =
     route === "/patients/registrations" &&
     ["hospital_admin", "system_admin"].includes(user.role);
+
   return (
     <>
       <EmergencyAccess
@@ -411,6 +565,7 @@ export default function DoctorWorkspace({ token, route, user }) {
         patient={emergencyPatient}
         onClose={() => setEmergencyPatient(null)}
       />
+
       {emergencyStatus.checking ? (
         <State loading />
       ) : emergencyStatus.activePatientId ? (
@@ -434,6 +589,7 @@ export default function DoctorWorkspace({ token, route, user }) {
                           ? "Doctor registrations"
                           : "Page not found"}
                 </h1>
+
                 <p>
                   {home
                     ? "Find the right patient quickly by name, date of birth or MedBridge ID."
@@ -444,6 +600,7 @@ export default function DoctorWorkspace({ token, route, user }) {
                         : ""}
                 </p>
               </div>
+
               {home &&
                 ["doctor", "hospital_admin"].includes(user.role) &&
                 user.hospital_id != null && (
@@ -455,13 +612,18 @@ export default function DoctorWorkspace({ token, route, user }) {
                 )}
             </section>
           )}
+
           <Notice>{feedback}</Notice>
-          {user.hospital_id == null && user.role !== "system_admin" && !id && (
-            <Notice>
-              Your account has no hospital assignment. Contact your
-              administrator.
-            </Notice>
-          )}
+
+          {user.hospital_id == null &&
+            user.role !== "system_admin" &&
+            !id && (
+              <Notice>
+                Your account has no hospital assignment. Contact your
+                administrator.
+              </Notice>
+            )}
+
           {id ? (
             <PatientRecord
               key={`${id}-${page || "overview"}`}
@@ -482,6 +644,7 @@ export default function DoctorWorkspace({ token, route, user }) {
             >
               <div className="card directory-card">
                 {home && <h2>Find a patient</h2>}
+
                 <PatientSearch
                   key={route}
                   token={token}
@@ -489,6 +652,7 @@ export default function DoctorWorkspace({ token, route, user }) {
                   onSelect={open}
                   compact={home}
                 />
+
                 {home && (
                   <p className="help">
                     Recently opened records and the complete patient directory
@@ -532,14 +696,17 @@ export default function DoctorWorkspace({ token, route, user }) {
     </>
   );
 }
+
 function DirectoryActions({ token, onRefresh, onMessage }) {
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState(false);
+
   return (
     <div className="directory-actions">
       <button className="secondary" onClick={() => setCreating(true)}>
         Create patient account
       </button>
+
       {creating && (
         <Modal
           title="Create patient account"
@@ -561,28 +728,38 @@ function DirectoryActions({ token, onRefresh, onMessage }) {
     </div>
   );
 }
+
 function DoctorApprovals({ token, user }) {
   const pending = useRemote("/auth/registrations/pending", token);
+
   const hospitals = useRemote(
-    user.role === "system_admin" ? "/auth/registrations/hospitals" : null,
+    user.role === "system_admin"
+      ? "/auth/registrations/hospitals"
+      : null,
     token,
   );
+
   const [hospitalId, setHospitalId] = useState(user.hospital_id || "");
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+
   async function approve(applicant) {
     setBusy(applicant.id);
     setError("");
+
     try {
       const result = await request(
         `/auth/registrations/${applicant.id}/approve`,
         token,
         {
           method: "POST",
-          body: JSON.stringify({ hospital_id: Number(hospitalId) }),
+          body: JSON.stringify({
+            hospital_id: Number(hospitalId),
+          }),
         },
       );
+
       setMessage(result.message);
       pending.reload();
     } catch (failure) {
@@ -591,16 +768,20 @@ function DoctorApprovals({ token, user }) {
       setBusy(null);
     }
   }
+
   return (
     <section className="card" id="doctor-registrations">
       <h2>Doctor registrations</h2>
+
       <p>
         Verify professional credentials and organization membership before
         approving access. Approval is recorded with the administrator and
         hospital assignment.
       </p>
+
       <Notice error>{error}</Notice>
       <Notice>{message}</Notice>
+
       {user.role === "system_admin" && (
         <State
           loading={hospitals.loading}
@@ -615,6 +796,7 @@ function DoctorApprovals({ token, user }) {
                 onChange={(event) => setHospitalId(event.target.value)}
               >
                 <option value="">Choose the verified hospital</option>
+
                 {hospitals.data?.map((hospital) => (
                   <option key={hospital.id} value={hospital.id}>
                     {hospital.name} ({hospital.code})
@@ -625,6 +807,7 @@ function DoctorApprovals({ token, user }) {
           </Field>
         </State>
       )}
+
       <State
         loading={pending.loading}
         error={pending.error}
@@ -635,11 +818,14 @@ function DoctorApprovals({ token, user }) {
             <article className="patient-result" key={applicant.id}>
               <div>
                 <h3>{applicant.full_name}</h3>
+
                 <p>
                   {applicant.email} · {applicant.organization}
                 </p>
+
                 <p>Registration: {applicant.registration_number}</p>
               </div>
+
               <button
                 disabled={busy !== null || !hospitalId}
                 onClick={() => approve(applicant)}
