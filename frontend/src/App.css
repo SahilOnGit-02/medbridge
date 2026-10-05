@@ -1604,6 +1604,7 @@ dialog::backdrop {
 #patient-details,
 #critical-information,
 #record-history,
+#medical-reports,
 #provider-details {
   scroll-margin-top: 20px;
 }
@@ -1632,9 +1633,10 @@ dialog::backdrop {
 }
 @media (max-width: 760px) {
   .portal-shell {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .portal-sidebar {
+    min-width: 0;
     position: static;
     min-height: auto;
     padding: 10px 16px;
@@ -1654,14 +1656,14 @@ dialog::backdrop {
     padding: 8px 10px;
   }
   .record-nav {
-    display: flex;
-    overflow-x: auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     margin-top: 8px;
     padding-top: 8px;
     gap: 8px;
   }
   .record-nav a {
-    white-space: nowrap;
+    white-space: normal;
     padding: 6px;
   }
   .workspace {
@@ -1721,4 +1723,397 @@ dialog::backdrop {
   .directory-heading > div:first-child {
     min-width: 0;
   }
+}
+
+/* Reports remain independent of the clinical history layout. */
+.report-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 16px;
+  margin: 20px 0 12px;
+}
+.report-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+}
+.report-list li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 0;
+  border-top: 1px solid var(--border, #d6e2e5);
+}
+.report-list h3 {
+  margin: 0 0 8px;
+}
+.report-list li > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.report-list li > button {
+  flex-shrink: 0;
+}
+@media (max-width: 600px) {
+  .report-filters {
+    grid-template-columns: 1fr;
+  }
+  .report-list li {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .medical-reports .section-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+/* Focused account steps and patient workspace. */
+button,
+.button,
+.account-links a,
+.account-back,
+.password-recovery {
+  text-decoration: none;
+}
+button:not(:disabled):hover,
+.button:hover,
+.account-links a:hover,
+.account-back:hover,
+.password-recovery:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.tertiary {
+  border-color: transparent;
+  background: transparent;
+  color: #1154b7;
+  padding: 8px 10px;
+}
+.tertiary:hover {
+  border-color: transparent;
+  background: #dfebfb;
+}
+.secondary {
+  background: #fff;
+  color: #1154b7;
+  border-color: #8fa9cd;
+}
+.portal-options {
+  gap: 36px;
+  margin-top: 32px;
+}
+.portal-options article {
+  padding: 28px;
+}
+.portal-choice-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 24px 0 12px;
+}
+.account-content form {
+  gap: 24px;
+  margin-top: 32px;
+}
+.name-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.password-control {
+  display: flex;
+  position: relative;
+}
+.password-control input {
+  padding-right: 52px;
+  min-width: 0;
+  width: 100%;
+}
+.password-eye {
+  position: absolute;
+  right: 2px;
+  top: 2px;
+  bottom: 2px;
+  min-width: 44px;
+  min-height: 40px;
+  padding: 8px;
+  border: 0;
+  background: transparent;
+}
+.password-recovery {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 4px;
+}
+.account-links {
+  border-top: 1px solid #d7dfeb;
+  padding-top: 24px;
+  gap: 12px;
+}
+.signup-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.account-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+.verification-resend {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  margin-top: 8px;
+}
+.verification-resend .help {
+  margin: 0;
+}
+.enrollment-extra {
+  padding-top: 20px;
+}
+.admin-form .check {
+  gap: 12px;
+  align-items: flex-start;
+}
+.patient-overview {
+  display: block;
+  padding: 28px;
+  margin-bottom: 28px;
+}
+.patient-identity-heading {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+.patient-identity-heading > div:first-of-type {
+  flex: 1;
+  min-width: 0;
+}
+.patient-overview .identity-actions {
+  flex-basis: auto;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+.patient-overview .profile-grid {
+  margin: 24px 0 16px;
+  gap: 24px 32px;
+}
+.patient-overview .profile-grid dd {
+  font-size: 1rem;
+}
+.patient-brief {
+  border-top: 1px solid #bdcfea;
+  margin-top: 24px;
+  padding-top: 20px;
+}
+.patient-brief h2 {
+  font-size: 1.15rem;
+}
+.patient-brief p {
+  margin-bottom: 8px;
+}
+.patient-brief .help {
+  font-size: 0.85rem;
+}
+.emergency-button.primary {
+  background: #a32929;
+  color: #fff;
+  border-color: #a32929;
+}
+.emergency-button.primary:hover {
+  background: #862020;
+  border-color: #862020;
+}
+.record-nav a[aria-current="page"] {
+  color: #1154b7;
+  background: #e3edfc;
+  font-weight: 700;
+}
+.patient-search.compact {
+  max-width: none;
+}
+.report-list {
+  gap: 24px;
+}
+.report-list li {
+  padding: 24px;
+  align-items: center;
+  border: 1px solid #d7dfeb;
+  border-radius: 10px;
+  background: #fcfdff;
+  gap: 32px;
+}
+.report-list li > button {
+  margin-left: auto;
+}
+.report-preview {
+  display: block;
+  width: 100%;
+  height: min(65vh, 720px);
+  border: 1px solid #cbd5e1;
+  margin-top: 20px;
+}
+.report-preview-actions {
+  justify-content: flex-end;
+}
+dialog:has(.report-preview) {
+  width: min(1000px, calc(100vw - 32px));
+}
+@media (max-width: 760px) {
+  .patient-overview {
+    padding: 20px;
+  }
+  .patient-identity-heading {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .patient-overview .identity-actions {
+    width: 100%;
+    flex-direction: row;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+  .patient-overview .identity-actions button {
+    width: auto;
+  }
+  .patient-overview .profile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
+  .portal-options {
+    gap: 28px;
+  }
+}
+@media (max-width: 480px) {
+  .name-fields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+  .portal-options article {
+    padding: 20px;
+  }
+  .patient-overview .profile-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .report-list li {
+    align-items: stretch;
+    padding: 20px;
+    gap: 20px;
+  }
+  .report-list li > button {
+    align-self: flex-end;
+  }
+}
+
+.patient-overview .identity-actions {
+  flex-shrink: 0;
+  max-width: 240px;
+}
+.patient-overview .profile-grid {
+  gap: 18px 24px;
+}
+.patient-overview .profile-grid dd {
+  font-weight: 600;
+}
+@media (max-width: 1000px) and (min-width: 761px) {
+  .patient-overview .profile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .patient-identity-heading > div:first-of-type {
+    flex-basis: 100%;
+  }
+  .patient-overview .identity-actions {
+    max-width: none;
+  }
+}
+
+.primary-nav a,
+.record-nav a {
+  text-decoration: none;
+}
+.primary-nav a:hover,
+.record-nav a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.primary:disabled,
+.primary:disabled:hover {
+  background: #e5eaf1;
+  color: #526175;
+  border-color: #cbd5e1;
+}
+.report-list li + li {
+  margin-top: 24px;
+}
+
+@media (max-width: 760px) {
+  .patient-overview .identity-actions {
+    order: -1;
+  }
+}
+.account-visual-copy {
+  background: #102945;
+  padding: 32px 40px;
+}
+.modal-heading h2 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.modal-heading .icon-button {
+  flex-shrink: 0;
+}
+@media (max-width: 760px) {
+  .account-visual-copy {
+    padding: 20px 24px;
+  }
+}
+
+.report-preview {
+  height: auto;
+  border: 0;
+}
+dialog:has(.report-preview) {
+  width: min(1000px, calc(100vw - 32px));
+}
+.pdf-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.pdf-controls p {
+  margin: 0;
+}
+.pdf-controls .field {
+  min-width: 120px;
+}
+.pdf-page-viewport {
+  overflow: auto;
+  max-height: 65vh;
+  max-width: 100%;
+  border: 1px solid #cbd5e1;
+  background: #edf1f6;
+}
+.pdf-page-viewport canvas {
+  display: block;
+  background: white;
+}
+.pdf-page-text {
+  margin-top: 20px;
+}
+.pdf-page-text > p {
+  white-space: pre-wrap;
+  padding: 16px;
 }

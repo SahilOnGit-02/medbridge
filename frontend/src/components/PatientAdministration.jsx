@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { dateText, request } from "../lib";
-import { Field, Modal, Notice } from "./UI";
+import { request } from "../lib";
+import { Field, Modal, Notice, PencilIcon } from "./UI";
 export function ProfileEditor({
   token,
   patient,
@@ -9,6 +9,7 @@ export function ProfileEditor({
   own = false,
   onBusyChange,
   onProfileCommitted,
+  restricted = false,
 }) {
   const fields = [
     ["full_name", "Full name", "text"],
@@ -19,7 +20,11 @@ export function ProfileEditor({
     ["address", "Address", "text"],
     ["emergency_contact_name", "Emergency contact name", "text"],
     ["emergency_contact_phone", "Emergency contact phone", "tel"],
-  ];
+  ].filter(
+    ([key]) =>
+      !restricted ||
+      !["full_name", "date_of_birth", "gender", "email"].includes(key),
+  );
   const [values, setValues] = useState(() =>
     Object.fromEntries([
       ...fields.map(([key]) => [key, patient[key] || ""]),
@@ -84,8 +89,9 @@ export function ProfileEditor({
   return (
     <form onSubmit={save} className="admin-form" aria-busy={busy}>
       <p className="help">
-        Contact email is separate from your sign-in email. Updating this profile
-        does not change your login.
+        {restricted
+          ? "You can update blood group, contact phone, address, emergency contacts and photo. Identity and account details require the patient or an administrator."
+          : "Contact email is separate from your sign-in email. Updating this profile does not change your login."}
       </p>
       <Field
         label="Profile photo (optional)"
@@ -157,85 +163,12 @@ export function ProfileEditor({
     </form>
   );
 }
-export function AccountEditor({
-  token,
-  patient,
-  onDone,
-  onCancel,
-  onBusyChange,
-}) {
-  const [email, setEmail] = useState(patient.email || "");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  async function save(event) {
-    event.preventDefault();
-    setBusy(true);
-    onBusyChange?.(true);
-    setError("");
-    try {
-      await request(
-        `/patients/${encodeURIComponent(patient.medbridge_id)}/create-account`,
-        token,
-        {
-          method: "POST",
-          body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
-        },
-      );
-      setPassword("");
-      onDone(
-        "Patient account created. Use your approved process to provide the credentials to the patient.",
-      );
-    } catch (failure) {
-      setError(failure.message);
-    } finally {
-      setBusy(false);
-      onBusyChange?.(false);
-    }
-  }
-  return (
-    <form className="admin-form" onSubmit={save} aria-busy={busy}>
-      <h3>Create patient sign-in account</h3>
-      <p>
-        This links an account to {patient.full_name}. No email is sent by this
-        action.
-      </p>
-      <Field
-        label="Patient account email"
-        type="email"
-        required
-        autoComplete="off"
-        value={email}
-        onChange={(event) => setEmail(event.target.value)}
-      />
-      <Field
-        label="Initial password"
-        type="password"
-        required
-        minLength={8}
-        maxLength={128}
-        autoComplete="new-password"
-        hint="Use at least 8 characters. Provide credentials through your approved process."
-        value={password}
-        onChange={(event) => setPassword(event.target.value)}
-      />
-      <Notice error>{error}</Notice>
-      <div className="actions end">
-        <button type="button" disabled={busy} onClick={onCancel}>
-          Cancel
-        </button>
-        <button className="primary" disabled={busy}>
-          {busy ? "Creating…" : "Create account"}
-        </button>
-      </div>
-    </form>
-  );
-}
 export default function PatientAdministration({
   token,
   patient,
   onRefresh,
   own = false,
+  restricted = false,
 }) {
   const [mode, setMode] = useState("");
   const [committed, setCommitted] = useState(false);
@@ -269,12 +202,13 @@ export default function PatientAdministration({
   return (
     <>
       <button
-        className={own ? undefined : "primary"}
+        className="tertiary profile-edit"
         onClick={() => {
           setCommitted(false);
           setMode("profile");
         }}
       >
+        <PencilIcon />
         {own ? "Edit my profile" : "Edit patient profile"}
       </button>
       {!own && patient.identity_verification_status !== "verified" && (
@@ -297,6 +231,7 @@ export default function PatientAdministration({
             token={token}
             patient={patient}
             own={own}
+            restricted={restricted}
             onBusyChange={setBusy}
             onProfileCommitted={() => setCommitted(true)}
             onDone={done}
@@ -327,38 +262,5 @@ export default function PatientAdministration({
         </Modal>
       )}
     </>
-  );
-}
-export function ProfileDetails({ patient }) {
-  return (
-    <section className="card profile-details" id="patient-details">
-      <h2>Patient details</h2>
-      <dl className="profile-grid">
-        {[
-          ["Date of birth", dateText(patient.date_of_birth)],
-          ["Blood group", patient.blood_group || "Not recorded"],
-          ["Phone", patient.phone || "Not recorded"],
-          ["Contact email", patient.email || "Not recorded"],
-          ["Address", patient.address || "Not recorded"],
-          [
-            "Emergency contact",
-            `${patient.emergency_contact_name || "Not recorded"} ${patient.emergency_contact_phone || ""}`,
-          ],
-        ].map(([label, value]) => (
-          <div key={label}>
-            <dt>{label}</dt>
-            <dd>{value}</dd>
-          </div>
-        ))}
-      </dl>
-      <p className="help">
-        {patient.blood_group_source === "patient_reported"
-          ? "Blood group is patient reported."
-          : patient.blood_group_source === "clinician_recorded"
-            ? "Blood group is clinician entered."
-            : "Blood group source is not recorded."}{" "}
-        Clinical verification remains separate.
-      </p>
-    </section>
   );
 }

@@ -2,13 +2,15 @@ import { useState } from "react";
 import { useRemote } from "../lib";
 import { Breadcrumbs, Empty, Identity, Link, Notice, State } from "./UI";
 import Records, { CriticalInformation, RecentVisits } from "./Records";
+import MedicalReports from "./MedicalReports";
 import Sharing from "./Sharing";
 import AccessHistory from "./AccessHistory";
 import EmergencyProfile from "./EmergencyProfile";
-import PatientAdministration, { ProfileDetails } from "./PatientAdministration";
+import PatientAdministration from "./PatientAdministration";
 const names = {
   overview: "Overview",
   records: "Records",
+  reports: "Medical reports",
   emergency: "Emergency profile",
   sharing: "Sharing",
   history: "Access history",
@@ -41,7 +43,11 @@ export default function PatientPortal({ token, route, onProfileSaved }) {
       >
         {record && (
           <>
-            <Identity patient={record.patient}>
+            <Identity
+              patient={record.patient}
+              record={record}
+              details={page === "overview"}
+            >
               <PatientAdministration
                 token={token}
                 patient={record.patient}
@@ -61,11 +67,13 @@ export default function PatientPortal({ token, route, onProfileSaved }) {
                   <Link className="button primary" to="/my-health/records">
                     View my records
                   </Link>
+                  <Link className="button" to="/my-health/reports">
+                    View medical reports
+                  </Link>
                   <Link className="button" to="/my-health/emergency">
                     Review emergency details
                   </Link>
                 </div>
-                <ProfileDetails patient={record.patient} />
                 <CriticalInformation record={record} />
                 <RecentVisits record={record} patient />
                 <section className="card next-actions">
@@ -88,12 +96,11 @@ export default function PatientPortal({ token, route, onProfileSaved }) {
                   filter by year and record type. Missing entries do not confirm
                   that a condition or allergy is absent.
                 </p>
-                <Records
-                  record={record}
-                  token={token}
-                  initialView="timeline"
-                />
+                <Records record={record} initialView="timeline" />
               </>
+            )}
+            {page === "reports" && (
+              <MedicalReports token={token} patient={record.patient} />
             )}
             {page === "emergency" && (
               <EmergencyProfile

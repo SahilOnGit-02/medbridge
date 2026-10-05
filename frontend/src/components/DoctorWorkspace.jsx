@@ -11,12 +11,10 @@ import {
   State,
 } from "./UI";
 import Records, { CriticalInformation, RecentVisits } from "./Records";
+import MedicalReports from "./MedicalReports";
 import EmergencyAccess from "./EmergencyAccess";
-import PatientAdministration, {
-  AccountEditor,
-  ProfileDetails,
-  ProfileEditor,
-} from "./PatientAdministration";
+import PatientAdministration from "./PatientAdministration";
+import CreatePatientForm from "./CreatePatientForm";
 function PatientCard({ patient, onSelect, recent = false }) {
   return (
     <article className="patient-result">
@@ -39,13 +37,7 @@ function PatientCard({ patient, onSelect, recent = false }) {
     </article>
   );
 }
-function PatientSearch({
-  token,
-  initialPatients,
-  onSelect,
-  recent,
-  compact = false,
-}) {
+function PatientSearch({ token, initialPatients, onSelect, compact = false }) {
   const [query, setQuery] = useState("");
   const [dob, setDob] = useState("");
   const [results, setResults] = useState(null);
@@ -106,6 +98,12 @@ function PatientSearch({
     event.preventDefault();
     setSuggesting(false);
     setActive(-1);
+    if (!query.trim() && !dob && compact) {
+      setError(
+        "Enter a patient name, MedBridge ID or date of birth to search.",
+      );
+      return;
+    }
     const run = ++sequence.current;
     setBusy(true);
     setError("");
@@ -220,42 +218,6 @@ function PatientSearch({
         </div>
       </form>
       <Notice error>{error}</Notice>
-      {results === null && recent && !compact && (
-        <section
-          id="recent-patients"
-          className="recent-patients"
-          aria-labelledby="recent-patients-heading"
-        >
-          <h2 id="recent-patients-heading">Recently opened patients</h2>
-          <p className="help">
-            Your most recent successful record views. Confirm identity before
-            reopening.
-          </p>
-          <State
-            loading={recent.loading}
-            error={recent.error}
-            retry={recent.reload}
-          >
-            {recent.data?.length ? (
-              <div className="recent-patient-grid">
-                {recent.data.map((patient) => (
-                  <PatientCard
-                    key={patient.id}
-                    patient={patient}
-                    onSelect={onSelect}
-                    recent
-                  />
-                ))}
-              </div>
-            ) : (
-              <p>
-                No records opened yet. Find a patient below; opened records will
-                appear here.
-              </p>
-            )}
-          </State>
-        </section>
-      )}
       {(!compact || results !== null) && (
         <>
           <h2 id="patient-directory">
@@ -319,7 +281,9 @@ function PatientSearch({
 }
 function PatientRecord({
   id,
+  page,
   token,
+  user,
   knownPatient,
   onEmergency,
   onChanged,
@@ -329,6 +293,7 @@ function PatientRecord({
   const remote = useRemote(`/clinical/patients/${id}/record`, token);
   const record = remote.data;
   const patient = record?.patient || knownPatient;
+  const recordPath = `/patients/${id}/records`;
   useEffect(() => {
     if (record) onViewed();
   }, [record, onViewed]);
@@ -336,15 +301,22 @@ function PatientRecord({
     <>
       <Breadcrumbs
         items={[
-          ["Patients", "/patients"],
-          [patient?.full_name || "Patient record"],
+          ["Home", "/patients"],
+          [
+            patient?.full_name || "Patient record",
+            page ? `/patients/${id}` : undefined,
+          ],
+          ...(page
+            ? [[page === "records" ? "Record history" : "Medical reports"]]
+            : []),
         ]}
       />
-      <Identity patient={patient}>
+      <Identity patient={patient} record={record} details={!page}>
         {patient && (
           <PatientAdministration
             token={token}
             patient={patient}
+            restricted={user.role === "doctor"}
             onRefresh={(message) => {
               setFeedback(message);
               remote.reload();
@@ -353,80 +325,70 @@ function PatientRecord({
           />
         )}
         <button
-          className="emergency-button"
+          className="primary emergency-button"
           disabled={!patient}
           onClick={() => onEmergency(patient)}
         >
           Emergency access
         </button>
       </Identity>
-      <Notice>
-        {feedback && (
-          <>
-            <span>{feedback}</span>{" "}
-            <button onClick={() => setFeedback("")}>Dismiss</button>
-          </>
-        )}
-      </Notice>
+      <Notice>{feedback}</Notice>
       <State
         loading={remote.loading}
         error={remote.error}
         retry={remote.reload}
       >
-        {record && (
-          <>
-            <ProfileDetails patient={patient} />
-            <CriticalInformation record={record} doctor />
-            <RecentVisits record={record} />
-            <Records
+        {record &&
+          (!page ? (
+            <>
+              <CriticalInformation
+                record={record}
+                doctor
+                recordPath={recordPath}
+              />
+              <RecentVisits record={record} recordPath={recordPath} />
+              <div className="overview-actions">
+                <Link className="button secondary" to={recordPath}>
+                  View record history
+                </Link>
+                <Link
+                  className="button secondary"
+                  to={`/patients/${id}/reports`}
+                >
+                  View medical reports
+                </Link>
+              </div>
+            </>
+          ) : page === "records" ? (
+            <Records key={id} record={record} />
+          ) : (
+            <MedicalReports
               key={id}
-              record={record}
               token={token}
               patientId={id}
-             />
-            <section className="card provider-details" id="provider-details">
-              <h2>Connected providers</h2>
-              <ul className="provider-list">
-                {record.hospital_mappings.map((mapping) => (
-                  <li key={mapping.id}>
-                    <strong>
-                      {mapping.hospital_name || "Provider name not recorded"}
-                    </strong>
-                    <span>
-                      Provider patient ID: {mapping.external_patient_id}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <p className="help">
-                Access:{" "}
-                {record.access?.mode === "administrative"
-                  ? "Administrative"
-                  : "Patient consent"}
-                . Consent expiry:{" "}
-                {record.access?.expires_at
-                  ? dateText(record.access.expires_at, true)
-                  : "No fixed expiry supplied"}
-                .
-              </p>
-            </section>
-          </>
-        )}
+              patient={patient}
+            />
+          ))}
       </State>
     </>
   );
 }
 export default function DoctorWorkspace({ token, route, user }) {
   const directory = useRemote("/patients", token);
-  const recent = useRemote("/patients/recent?limit=6", token);
+  const recent = useRemote(
+    route === "/patients/recent" ? "/patients/recent?limit=20" : null,
+    token,
+  );
   const [emergencyStatus, setEmergencyStatus] = useState({
     checking: true,
     activePatientId: null,
   });
   const [selected, setSelected] = useState(null);
   const [emergencyPatient, setEmergencyPatient] = useState(null);
-  const match = route.match(/^\/patients\/(\d+)$/);
+  const [feedback, setFeedback] = useState("");
+  const match = route.match(/^\/patients\/(\d+)(?:\/(records|reports))?$/);
   const id = match?.[1];
+  const page = match?.[2];
   const patient =
     selected?.id === Number(id)
       ? selected
@@ -435,6 +397,12 @@ export default function DoctorWorkspace({ token, route, user }) {
     setSelected(row);
     navigate(`/patients/${row.id}`);
   };
+  const home = route === "/patients";
+  const listing = route === "/patients/directory";
+  const recentlyOpened = route === "/patients/recent";
+  const approvals =
+    route === "/patients/registrations" &&
+    ["hospital_admin", "system_admin"].includes(user.role);
   return (
     <>
       <EmergencyAccess
@@ -455,54 +423,108 @@ export default function DoctorWorkspace({ token, route, user }) {
           {!id && (
             <section className="directory-heading">
               <div>
-                <h1>Find a patient</h1>
-                <p>Search by name, date of birth or MedBridge ID.</p>
+                <h1>
+                  {home
+                    ? "Home"
+                    : listing
+                      ? "Patient directory"
+                      : recentlyOpened
+                        ? "Recently opened patients"
+                        : approvals
+                          ? "Doctor registrations"
+                          : "Page not found"}
+                </h1>
+                <p>
+                  {home
+                    ? "Find the right patient quickly by name, date of birth or MedBridge ID."
+                    : listing
+                      ? "All patients connected to your hospital, in alphabetical order."
+                      : recentlyOpened
+                        ? "Your last 20 successful record views. Confirm identity before reopening."
+                        : ""}
+                </p>
               </div>
-              <DirectoryActions
-                token={token}
-                patients={directory.data || []}
-                onRefresh={directory.reload}
-              />
-              {user.hospital_id == null && user.role !== "system_admin" && (
-                <Notice>
-                  Your account has no hospital assignment. Contact your
-                  administrator.
-                </Notice>
-              )}
+              {home &&
+                ["doctor", "hospital_admin"].includes(user.role) &&
+                user.hospital_id != null && (
+                  <DirectoryActions
+                    token={token}
+                    onRefresh={directory.reload}
+                    onMessage={setFeedback}
+                  />
+                )}
             </section>
+          )}
+          <Notice>{feedback}</Notice>
+          {user.hospital_id == null && user.role !== "system_admin" && !id && (
+            <Notice>
+              Your account has no hospital assignment. Contact your
+              administrator.
+            </Notice>
           )}
           {id ? (
             <PatientRecord
-              key={id}
+              key={`${id}-${page || "overview"}`}
               id={id}
+              page={page}
+              user={user}
               token={token}
               knownPatient={patient}
               onEmergency={setEmergencyPatient}
               onChanged={directory.reload}
               onViewed={recent.reload}
             />
-          ) : (
+          ) : home || listing ? (
             <State
               loading={directory.loading}
               error={directory.error}
               retry={directory.reload}
             >
               <div className="card directory-card">
+                {home && <h2>Find a patient</h2>}
                 <PatientSearch
+                  key={route}
                   token={token}
                   initialPatients={directory.data}
                   onSelect={open}
-                  recent={recent}
+                  compact={home}
                 />
+                {home && (
+                  <p className="help">
+                    Recently opened records and the complete patient directory
+                    are available in the navigation.
+                  </p>
+                )}
               </div>
             </State>
-          )}
-          {!id && ["hospital_admin", "system_admin"].includes(user.role) && (
+          ) : recentlyOpened ? (
+            <State
+              loading={recent.loading}
+              error={recent.error}
+              retry={recent.reload}
+            >
+              {recent.data?.length ? (
+                <div className="card patient-list">
+                  {recent.data.map((row) => (
+                    <PatientCard
+                      key={row.id}
+                      patient={row}
+                      onSelect={open}
+                      recent
+                    />
+                  ))}
+                </div>
+              ) : (
+                <Empty title="No recently opened patients">
+                  Records will appear here after you open them successfully.
+                </Empty>
+              )}
+            </State>
+          ) : approvals ? (
             <DoctorApprovals token={token} user={user} />
-          )}
-          {route !== "/patients" && !id && (
+          ) : (
             <Empty title="Page not found">
-              <Link to="/patients">Return to patients</Link>
+              <Link to="/patients">Return to home</Link>
             </Empty>
           )}
         </>
@@ -510,119 +532,30 @@ export default function DoctorWorkspace({ token, route, user }) {
     </>
   );
 }
-function DirectoryActions({ token, patients, onRefresh }) {
-  const [mode, setMode] = useState("");
+function DirectoryActions({ token, onRefresh, onMessage }) {
+  const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [committed, setCommitted] = useState(false);
-  function close() {
-    setMode("");
-    setSelected("");
-    if (committed) onRefresh();
-  }
-  const [selected, setSelected] = useState("");
-  const [message, setMessage] = useState("");
-  const profile = useRemote(
-    selected ? `/patients/${encodeURIComponent(selected)}` : null,
-    token,
-  );
-  function done(text) {
-    setMessage(text);
-    setMode("");
-    setSelected("");
-    onRefresh();
-  }
   return (
     <div className="directory-actions">
-      <div className="actions">
-        <button
-          onClick={() => {
-            setSelected("");
-            setCommitted(false);
-            setMode("profile");
-          }}
-        >
-          Edit patient profile
-        </button>
-        <button
-          onClick={() => {
-            setSelected("");
-            setCommitted(false);
-            setMode("account");
-          }}
-        >
-          Create patient account
-        </button>
-      </div>
-      <Notice>{message}</Notice>
-      {mode && (
+      <button className="secondary" onClick={() => setCreating(true)}>
+        Create patient account
+      </button>
+      {creating && (
         <Modal
-          title={
-            mode === "account"
-              ? "Create patient account"
-              : "Edit patient profile"
-          }
+          title="Create patient account"
           busy={busy}
-          onClose={close}
+          onClose={() => setCreating(false)}
         >
-          <Field
-            label="Select patient"
-            hint="Compare date of birth and patient ID before continuing."
-          >
-            {(id) => (
-              <select
-                id={id}
-                disabled={busy}
-                value={selected}
-                onChange={(event) => setSelected(event.target.value)}
-              >
-                <option value="">Choose a patient</option>
-                {patients.map((patient) => (
-                  <option key={patient.id} value={patient.medbridge_id}>
-                    {patient.full_name} · {dateText(patient.date_of_birth)} ·{" "}
-                    {patient.medbridge_id}
-                  </option>
-                ))}
-              </select>
-            )}
-          </Field>
-          {selected && (
-            <State
-              loading={profile.loading}
-              error={profile.error}
-              retry={profile.reload}
-            >
-              {profile.data &&
-                (mode === "profile" ? (
-                  <ProfileEditor
-                    token={token}
-                    patient={profile.data}
-                    onDone={done}
-                    onBusyChange={setBusy}
-                    onProfileCommitted={() => setCommitted(true)}
-                    onCancel={close}
-                  />
-                ) : profile.data.has_account ? (
-                  <Notice>
-                    This patient already has a sign-in account. Use the patient
-                    portal’s account recovery if they need help signing in.
-                  </Notice>
-                ) : profile.data.identity_verification_status === "verified" ? (
-                  <AccountEditor
-                    token={token}
-                    patient={profile.data}
-                    onDone={done}
-                    onBusyChange={setBusy}
-                    onCancel={close}
-                  />
-                ) : (
-                  <Notice>
-                    Identity must be verified first. Open this patient’s record
-                    and use Verify identity after completing your organization’s
-                    identity checks.
-                  </Notice>
-                ))}
-            </State>
-          )}
+          <CreatePatientForm
+            token={token}
+            onBusyChange={setBusy}
+            onCancel={() => setCreating(false)}
+            onDone={(message) => {
+              setCreating(false);
+              onMessage(message);
+              onRefresh();
+            }}
+          />
         </Modal>
       )}
     </div>

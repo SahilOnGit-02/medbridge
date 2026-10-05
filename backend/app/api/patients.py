@@ -1,10 +1,12 @@
 from datetime import date, datetime, timezone
 import uuid
+import secrets
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app.api.clinical import require_patient_hospital_access
 from app.api.deps import get_current_patient, get_current_user
@@ -25,6 +27,7 @@ from app.models.clinical import (
 )
 from app.schemas.patient import (
     PatientAccountCreate,
+    PatientEnrollment,
     PatientCreate,
     PatientProfileUpdate,
     PatientRead,
@@ -200,6 +203,92 @@ def create_patient(
     return patient
 
 
+@router.post("/enroll", response_model=PatientRead, status_code=201)
+def enroll_patient(
+    payload: PatientEnrollment,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    from app.api.accounts import issue_verification, verification_message
+    from app.services.account_mail import delivery_ready, deliver_or_report
+
+    if (
+        current_user.role not in {"doctor", "hospital_admin"}
+        or current_user.hospital_id is None
+    ):
+        raise HTTPException(
+            403, "A doctor or administrator with a hospital assignment is required"
+        )
+    if not payload.identity_checked:
+        raise HTTPException(
+            422,
+            "Confirm that the patient's identity has been checked using your organization's process",
+        )
+    delivery_ready()
+    email = str(payload.email).strip().lower()
+    if db.scalar(select(User).where(func.lower(User.email) == email)):
+        raise HTTPException(
+            409,
+            "Email address is already registered. Ask the patient to use account recovery.",
+        )
+    user = User(
+        email=email,
+        full_name=payload.full_name,
+        password_hash=hash_password(payload.password),
+        role="patient",
+        is_active=False,
+        registration_status="pending_email",
+    )
+    db.add(user)
+    try:
+        db.flush()
+        data = payload.model_dump(exclude={"password", "identity_checked"})
+        data["email"] = email
+        patient = Patient(
+            **data,
+            user_id=user.id,
+            medbridge_id=f"MB-{secrets.token_hex(8).upper()}",
+            identity_verification_status="verified",
+            identity_verified_at=datetime.utcnow(),
+            identity_verified_by=current_user.id,
+            blood_group_source="clinician_recorded" if payload.blood_group else None,
+        )
+        db.add(patient)
+        db.flush()
+        db.add(
+            PatientHospitalMapping(
+                patient_id=patient.id,
+                hospital_id=current_user.hospital_id,
+                external_patient_id=patient.medbridge_id,
+                source_system="MedBridge enrollment",
+            )
+        )
+        challenge, code, link = issue_verification(db, user, "patient")
+        log_audit_event(
+            db,
+            current_user=current_user,
+            action="patient_account_enrolled",
+            resource_type="patient",
+            resource_id=patient.id,
+            patient_id=patient.id,
+            success=True,
+        )
+        db.commit()
+        db.refresh(patient)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, "An account already exists with these details")
+    # No clinical consent is created here. Email verification remains required.
+    deliver_or_report(
+        email,
+        "Verify your MedBridge email",
+        verification_message("patient", challenge, code, link),
+        portal="patient",
+        purpose="verify",
+    )
+    return patient
+
+
 @router.get("/search", response_model=list[PatientSearchResult])
 def search_patients(
     q: str | None = Query(default=None, min_length=1),
@@ -270,6 +359,7 @@ def get_patient(
 
 from app.schemas.patient import (
     PatientAccountCreate,
+    PatientEnrollment,
     PatientCreate,
     PatientProfileUpdate,
     PatientRead,
@@ -302,6 +392,17 @@ def update_patient_profile(
     )
 
     update_data = payload.model_dump(exclude_unset=True)
+    if current_user.role == "doctor" and set(update_data) - {
+        "blood_group",
+        "phone",
+        "address",
+        "emergency_contact_name",
+        "emergency_contact_phone",
+    }:
+        raise HTTPException(
+            403,
+            "Doctors can edit clinical contact and emergency details only. Identity and account changes require the patient or an administrator.",
+        )
 
     if (
         "blood_group" in update_data
@@ -314,6 +415,16 @@ def update_patient_profile(
         setattr(patient, field, value)
     if patient.user and "full_name" in update_data:
         patient.user.full_name = patient.full_name
+
+    log_audit_event(
+        db,
+        current_user=current_user,
+        action="patient_profile_updated",
+        resource_type="patient",
+        resource_id=patient.id,
+        patient_id=patient.id,
+        success=True,
+    )
 
     db.commit()
     db.refresh(patient)

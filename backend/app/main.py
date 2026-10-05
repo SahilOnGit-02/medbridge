@@ -1,6 +1,10 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.core.config import settings
 
 from app.api.patients import router as patients_router
 from app.api.clinical import router as clinical_router
@@ -13,15 +17,12 @@ from app.api.patient_access import router as patient_access_router
 from app.api.medical_reports import router as medical_reports_router
 
 app = FastAPI(title="MedBridge API", version="0.2.0")
+Path("uploads").mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "https://medbridge-theta-five.vercel.app",
-    ],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -39,9 +40,6 @@ app.include_router(fhir_router)
 app.include_router(auth_router)
 app.include_router(consents_router)
 app.include_router(emergency_router)
-app.include_router(patient_access_router)
-app.include_router(medical_reports_router)
-app.include_router(accounts_router)
 app.include_router(patient_access_router)
 app.include_router(medical_reports_router)
 app.include_router(accounts_router)

@@ -541,9 +541,7 @@ def test_hospital_doctor_can_update_patient_profile():
         "/patients/MB-TEST-A-001/profile",
         headers={"Authorization": f"Bearer {token}"},
         json={
-            "full_name": "Updated Test Patient A",
             "phone": "9876543210",
-            "gender": "Male",
             "address": "Test Address, Delhi",
             "emergency_contact_name": "Test Emergency Contact",
             "emergency_contact_phone": "9876500000",
@@ -555,9 +553,7 @@ def test_hospital_doctor_can_update_patient_profile():
     data = response.json()
 
     assert data["medbridge_id"] == "MB-TEST-A-001"
-    assert data["full_name"] == "Updated Test Patient A"
     assert data["phone"] == "9876543210"
-    assert data["gender"] == "Male"
     assert data["address"] == "Test Address, Delhi"
     assert data["emergency_contact_name"] == "Test Emergency Contact"
     assert data["emergency_contact_phone"] == "9876500000"
