@@ -32,6 +32,8 @@ class Settings(BaseSettings):
         "http://localhost:5173",
         "http://localhost:5174",
         "https://medbridge-theta-five.vercel.app",
+        "https://med-bridge.in",
+        "https://www.med-bridge.in",
     ]
     jwt_algorithm: str = "HS256"
 
