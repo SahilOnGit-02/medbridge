@@ -15,3 +15,5 @@ uploads/
 
 # Local demo seed script
 backend/seed_demo.py
+
+backend/medbridge.dump
