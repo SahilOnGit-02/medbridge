@@ -1814,6 +1814,56 @@
         "title": "PatientEnrollment",
         "type": "object"
       },
+      "PatientHospitalConnect": {
+        "properties": {
+          "hospital_code": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Hospital Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "hospital_code"
+        ],
+        "title": "PatientHospitalConnect",
+        "type": "object"
+      },
+      "PatientIdentityLookup": {
+        "properties": {
+          "connected": {
+            "title": "Connected",
+            "type": "boolean"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "medbridge_id": {
+            "title": "Medbridge Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "medbridge_id",
+          "full_name",
+          "connected"
+        ],
+        "title": "PatientIdentityLookup",
+        "type": "object"
+      },
       "PatientIdentityResolution": {
         "properties": {
           "hospital": {
@@ -5256,6 +5306,53 @@
         ]
       }
     },
+    "/patients/identity/{medbridge_id}": {
+      "get": {
+        "operationId": "lookup_patient_identity_patients_identity__medbridge_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "medbridge_id",
+            "required": true,
+            "schema": {
+              "title": "Medbridge Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientIdentityLookup"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Lookup Patient Identity",
+        "tags": [
+          "patients"
+        ]
+      }
+    },
     "/patients/me": {
       "get": {
         "operationId": "get_my_patient_profile_patients_me_get",
@@ -5355,6 +5452,52 @@
         "summary": "Get My Access History",
         "tags": [
           "Patient Access History"
+        ]
+      }
+    },
+    "/patients/me/connect": {
+      "post": {
+        "operationId": "connect_my_hospital_patients_me_connect_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatientHospitalConnect"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MappingRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Connect My Hospital",
+        "tags": [
+          "patients"
         ]
       }
     },

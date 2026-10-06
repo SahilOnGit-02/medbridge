@@ -61,8 +61,10 @@ See [authentication](AUTHENTICATION.md), [consent](CONSENT-AND-ACCESS-CONTROL.md
 | GET | `/patients` | Bearer | patients |
 | POST | `/patients` | Bearer | patients |
 | POST | `/patients/enroll` | Bearer | patients |
+| GET | `/patients/identity/{medbridge_id}` | Bearer | patients |
 | GET | `/patients/me` | Bearer | patients |
 | GET | `/patients/me/access-history` | Bearer | Patient Access History |
+| POST | `/patients/me/connect` | Bearer | patients |
 | GET | `/patients/me/emergency-profile` | Bearer | patients |
 | PATCH | `/patients/me/emergency-profile` | Bearer | patients |
 | POST | `/patients/me/photo` | Bearer | patients |
