@@ -289,14 +289,28 @@ def test_symlink_cannot_escape_report_storage(fixture):
     root = medical_reports.REPORT_ROOT
     outside = root.parent / f"outside-{root.name}.pdf"
     outside.write_bytes(b"Synthetic outside storage fixture")
-    (root / "link.pdf").symlink_to(outside)
-    with sessions() as db:
-        db.get(MedicalReport, 1).file_name = "link.pdf"
-        db.commit()
+
     try:
+        (root / "link.pdf").symlink_to(outside)
+    except OSError as error:
+        if getattr(error, "winerror", None) == 1314:
+            pytest.skip(
+                "Windows symlink creation requires Developer Mode or elevated privileges"
+            )
+        raise
+
+    try:
+        with sessions() as db:
+            db.get(MedicalReport, 1).file_name = "link.pdf"
+            db.commit()
+
         assert (
-            client.get("/patients/me/reports/1/file", headers=patient).status_code
+            client.get(
+                "/patients/me/reports/1/file",
+                headers=patient,
+            ).status_code
             == 500
         )
     finally:
-        outside.unlink()
+        (root / "link.pdf").unlink(missing_ok=True)
+        outside.unlink(missing_ok=True)
