@@ -1,31 +1,56 @@
-# Finalization verification
+# Finalization Verification
 
-Verification date: 4 October 2026. Branch: `codex/medbridge-finalization`, started from `70172e2384344e74eac8d736be148ef581175b5a` and incorporates main through `9804fe3` (including the newer SMTP, hosted API URL, container port, consent test and report seed changes).
+Verification date: 7 October 2026.
 
-## Completed checks
+This document records the current repository, backend, frontend, API, access-control, and n8n verification state. It distinguishes completed demonstration checks from remaining operational work.
+
+---
+
+## 1. Automated Verification
 
 | Check | Result | Evidence / boundary |
 |---|---|---|
-| Backend regression | 134 tests passed | Isolated SQLite fixtures; 2,312 existing/deprecation warnings reported in the final run |
-| Frontend lint | Passed | ESLint |
-| Frontend production build | Passed | Vite build; no deployed release implied |
-| API/database references | Current | Metadata-generated OpenAPI, 57 paths, API inventory, ER/column inventory and n8n node inventory |
-| Config preflight | Passed with synthetic example settings | Validates fields; sends no email and does not prove provider connectivity |
-| Patient report UI | Verified | Navigation/overview shortcut, newest-first list, batch expansion, text/type filtering and empty filter state |
-| PDF download | Verified | Browser saved a one-page PDF from the isolated patient fixture |
-| Doctor report UI | Verified | Reports remain visible with timeline selected; section navigation works |
-| Consent changes | Verified | A previously listed file returns 403 after sharing is disabled; stale UI metadata is cleared; allergy sharing remains enabled |
-| Responsive layout | Verified at 320px | Patient reports and doctor record; doctor navigation overflow fixed |
-| Accessibility | Three scans, zero reported violations | Patient 320px, doctor 1440px and doctor 320px; WCAG A/AA tagged axe checks only |
-| Local migration/data | Verified | Fresh private backup; head `ab7a1d786a22`; existing accounts and clinical counts preserved |
+| Backend regression | 146 passed, 1 skipped | pytest -q |
+| Frontend production build | Passed | Vite production build completed successfully |
+| OpenAPI reference | Regenerated | python -m scripts.generate_reference completed against the current backend |
+| Repository secret scan | Passed | python -m backend.scripts.check_repository_secrets |
+| Git whitespace check | Passed | git diff --check |
+| Release configuration | Local-only preflight | Local configuration is not production configuration; this does not establish production readiness |
 
-Screenshots use clearly synthetic, isolated fixtures with 15 report rows. They do not establish that the main local database has those reports. The main local database has zero MedicalReport rows after migration, matching its pre-existing state; no automatic seed was run.
+## 2. Access-Control Verification
 
-Local data preserved: 2 users, 100 patients, 3,637 encounters, 747 conditions, 199 allergies, 3,637 prescriptions and 7,274 observations. The backup is outside the repository in the workspace-private `.local/backups` folder. Main local services remain on frontend 5173 and backend 8001. Browser login with the existing doctor account succeeded and the directory showed 100 accessible patients.
+- Doctor search is hospital-scoped for normal name-based discovery.
+- Incorrect date of birth does not produce a normal patient match.
+- Cross-hospital name searches do not expose unrelated patients.
+- Exact patient ID fallback is limited to identity information and does not grant clinical-record access.
+- A hospital connection does not automatically grant access to clinical records.
+- Patient sharing can be scoped by category and duration.
+- Sharing review reflects the selected scope and expiry before confirmation.
+- Revoking sharing blocks subsequent clinical-record access while preserving the hospital connection.
+- Emergency access requires an explicit reason and is time-limited.
+- Emergency access exposes the restricted emergency profile rather than the full clinical record.
+- Emergency activity and sharing changes are visible in patient access history.
 
-SMTP tests use a controlled test double, including TLS/authentication ordering, private failures, committed tokens, patient signup/verification/reset and doctor verification/reset/administrator approval. No external email was sent. The tracked-file heuristic secret scan passed, all changed documentation links were checked, and the staged diff has no whitespace errors. These checks do not constitute a full secret-history or security audit.
+## 3. Current Integration Verification
 
-## Browser evidence
+- Hospital A production n8n workflow successfully created a synthetic outpatient encounter.
+- Hospital B production n8n workflow successfully created a synthetic observation.
+- Hospital A credentials are restricted to Hospital A data; cross-hospital access returned 403.
+- Hospital B credentials are restricted to Hospital B data; cross-hospital access returned 403.
+- Backend authorization remains the authority for hospital-scoped clinical access.
+
+## 4. Browser and UX Evidence
+
+- Doctor search, identity confirmation, and focused patient access were manually verified.
+- Patient hospital connection and sharing controls were manually verified.
+- Sharing scope, category selection, duration, review, expiry, and revocation were verified.
+- Revoked clinical access was blocked after the sharing change.
+- Emergency access was manually verified with a required reason, time-limited session, restricted emergency profile, and patient-visible access history.
+- Loading, restricted, and access-denied states were inspected during the verification flows.
+
+### Report and accessibility evidence
+
+The following repository evidence files document the inspected patient/doctor report views and scoped accessibility checks:
 
 - [Patient reports, desktop](evidence/patient-reports-desktop.png)
 - [Patient reports, narrow screen](evidence/patient-reports-mobile.png)
@@ -34,14 +59,32 @@ SMTP tests use a controlled test double, including TLS/authentication ordering, 
 - [Report access removed after sharing changes](evidence/doctor-report-access-disabled.png)
 - [Scoped accessibility scans](evidence/accessibility-scans.json)
 
-Screenshots and scans are evidence of the inspected routes/states, not a full WCAG conformance assessment or clinical safety validation.
+These files provide evidence for the inspected routes and states only. They do not constitute a complete WCAG conformance assessment, penetration test, clinical safety validation, or production acceptance test.
 
-## Remaining release work
+## 5. Security and Repository Verification
 
-- Real SMTP provider, verified sender and final frontend/backend URLs: pending user configuration.
-- Real-inbox verification/recovery and staging deployment acceptance: not performed.
-- n8n execution against the current protected API: not performed; exports require current URL/auth configuration.
-- Production release, deployed smoke checks, operational/formal security review: not performed.
-- Final case study/project report and demo video: not produced by this branch.
+- No .env, runtime upload, or database dump files are tracked by Git.
+- The tracked-file heuristic secret scan passed.
+- n8n workflow credentials use environment-variable references rather than committed passwords.
+- Hospital-scoped authorization was verified for both Hospital A and Hospital B.
+- Cross-hospital clinical access attempts returned 403.
+- Verification used synthetic/demo data; no real EHR integration was established.
 
-No production deployment or merge is performed by this work. Changes are published for review on the requested branch.
+## 6. Remaining Operational Work
+
+- Real SMTP provider configuration, verified sender configuration, and final production frontend/backend configuration remain deployment tasks.
+- Real-inbox email verification and password-recovery acceptance testing have not been performed.
+- Oracle-hosted n8n has not yet been operationalized; the verified workflows currently demonstrate the deployed API integration.
+- Production monitoring, operational backup/recovery procedures, and formal security review remain future operational work.
+- A full production deployment acceptance pass has not been claimed.
+- The demo video and case study are external deliverables and are not represented as generated artifacts in this repository.
+
+## 7. Verification Boundary
+
+This verification establishes the behavior that was actually exercised in the current repository and deployed API flows. It is not a claim of regulatory compliance, full penetration testing, clinical safety certification, or complete production operational readiness.
+
+The central verification principle is:
+
+> Identity discovery, hospital connection, and clinical-record access are separate operations. Clinical access is granted only when authentication, authorization, and applicable sharing policy permit it.
+
+---

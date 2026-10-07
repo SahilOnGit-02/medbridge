@@ -281,7 +281,7 @@ def test_routes_and_operation_ids_are_unique():
 )
 def test_report_endpoints_require_authentication(fixture, endpoint):
     client, *_ = fixture
-    assert client.get(endpoint).status_code == 403
+    assert client.get(endpoint).status_code == 401
 
 
 def test_symlink_cannot_escape_report_storage(fixture):
