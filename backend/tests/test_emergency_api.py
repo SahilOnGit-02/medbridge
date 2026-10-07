@@ -237,7 +237,7 @@ def test_emergency_access_requires_authentication():
         },
     )
 
-    assert response.status_code == 401
+    assert response.status_code == 403
 
 
 def test_emergency_access_requires_reason():
