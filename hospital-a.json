@@ -304,7 +304,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"patient_id\": {{ $json.id }},\n  \"hospital_id\": 1,\n  \"external_patient_id\": \"{{ $('Normalize Hospital A').item.json.external_patient_id }}\",\n  \"source_system\": \"Demo Hospital A HIS\"\n}",
+        "jsonBody": "={\n  \"patient_id\": {{ $json.id }},\n  \"hospital_id\": 2,\n  \"external_patient_id\": \"{{ $('Normalize Hospital A').item.json.external_patient_id }}\",\n  \"source_system\": \"Demo Hospital A HIS\"\n}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
