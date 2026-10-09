@@ -1,5 +1,9 @@
 # Deployment and release checklist
 
+## Oracle n8n hosting
+
+The separate [Oracle n8n deployment package](../deploy/oracle-n8n/README.md) contains Compose/Caddy templates, private bootstrap and SSH helpers, DNS/firewall instructions, operations and dated status. The owner reports workflow setup complete as of 9 October 2026; current hosted exports and acceptance evidence were not collected for that documentation change. GitHub pushes do not deploy Oracle. The application release checklist below remains separate.
+
 This is a release runbook, not evidence of a completed deployment. Provider details and final frontend/backend URLs remain pending user input. The branch must not be represented as production-ready until the staging and release checks below pass.
 
 ## Sequence

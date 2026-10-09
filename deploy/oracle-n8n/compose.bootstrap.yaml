@@ -1,0 +1,11 @@
+# Used only for initial owner signup through a private SSH tunnel.
+# Caddy's public profile must remain disabled during this phase.
+services:
+  n8n:
+    environment:
+      N8N_HOST: localhost
+      N8N_PROTOCOL: http
+      N8N_EDITOR_BASE_URL: http://localhost:5678/
+      N8N_WEBHOOK_URL: http://localhost:5678/
+      N8N_SECURE_COOKIE: "false"
+      N8N_PROXY_HOPS: "0"

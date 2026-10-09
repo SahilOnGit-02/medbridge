@@ -1,0 +1,54 @@
+name: medbridge-n8n
+
+services:
+  n8n:
+    image: n8nio/n8n:${N8N_VERSION:?Set N8N_VERSION in .env}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5678:5678"
+    environment:
+      N8N_HOST: ${N8N_DOMAIN:?Set N8N_DOMAIN in .env}
+      N8N_PORT: "5678"
+      N8N_PROTOCOL: https
+      N8N_EDITOR_BASE_URL: https://${N8N_DOMAIN}/
+      N8N_WEBHOOK_URL: https://${N8N_DOMAIN}/
+      N8N_PROXY_HOPS: "1"
+      N8N_SECURE_COOKIE: "true"
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:?Set a private persistent encryption key in .env}
+      GENERIC_TIMEZONE: ${N8N_TIMEZONE:?Set N8N_TIMEZONE in .env}
+      TZ: ${N8N_TIMEZONE}
+      DB_TYPE: sqlite
+      EXECUTIONS_DATA_PRUNE: "true"
+      EXECUTIONS_DATA_MAX_AGE: "72"
+      EXECUTIONS_DATA_PRUNE_MAX_COUNT: "1000"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5678/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 90s
+      retries: 5
+
+  caddy:
+    image: caddy:${CADDY_VERSION:?Set CADDY_VERSION in .env}
+    profiles: [public]
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      N8N_DOMAIN: ${N8N_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      n8n:
+        condition: service_healthy
+
+volumes:
+  n8n_data:
+  caddy_data:
+  caddy_config:

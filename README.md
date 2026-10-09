@@ -189,6 +189,8 @@ The current [portal revision](docs/PORTAL-REVISION.md) separates doctor and pati
 
 ## Finalization and release handoff
 
+The [Oracle n8n hosting package](deploy/oracle-n8n/README.md) provides deployment templates, networking instructions and backup/recovery guidance. Private server state and credentials are excluded.
+
 The [technical documentation index](docs/README.md) covers the current account lifecycle, consent/report access, environment configuration, generated API/ER references, deployment checklist and demo guidance. [Finalization verification](docs/finalization/VERIFICATION.md) records checks for this branch.
 
 Medical Reports has a dedicated patient page and an independent clinician record section. Account email supports private development capture and configurable TLS SMTP. Provider details and final deployed URLs are still required before live email and staging acceptance. The bundled n8n exports require current API URL/authentication configuration and have not been rerun in this revision.
